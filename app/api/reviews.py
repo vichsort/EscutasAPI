@@ -1,5 +1,6 @@
+import bleach
 from flask import Blueprint, request, jsonify
-from app.extensions import db
+from app.extensions import db, limiter
 from app.models.user import User
 from app.models.review import AlbumReview, TrackReview
 from app.services.spotify_service import SpotifyService
@@ -38,6 +39,7 @@ def get_authenticated_user():
     return user
 
 @reviews_bp.route('', methods=['POST'])
+@limiter.limit("5 per minute")
 def create_review():
     """
     Cria uma nova review completa (Álbum + Faixas + Texto).
@@ -62,6 +64,10 @@ def create_review():
         return jsonify({"error": "Usuário não autenticado"}), 401
 
     data = request.json
+
+    raw_text = data.get('review_text', '')
+    clean_text = bleach.clean(raw_text, tags=[], strip=True)
+
     album_data = data.get('album')
     tracks_data = data.get('tracks', [])
     review_text = data.get('review_text', '')
@@ -78,7 +84,7 @@ def create_review():
             album_name=album_data['name'],
             artist_name=album_data['artist'],
             cover_url=album_data['cover'],
-            review_text=review_text
+            review_text=clean_text
         )
 
         # 2. Cria as Reviews das Faixas (Filhos)
