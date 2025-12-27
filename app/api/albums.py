@@ -10,18 +10,18 @@ albums_bp = Blueprint('albums', __name__, url_prefix='/api/albums')
 def search_albums(current_user):
     """
     Busca álbuns no Spotify.
-    Uso: GET /api/albums/search?q=Dark Side
     """
     query = request.args.get('q')
     
     if not query:
         return error_response("O termo de busca 'q' é obrigatório.", 400)
-    
-    # Chama o serviço (que tem cache de 1 hora)
+
     results = AlbumService.search_albums(current_user, query)
+
+    data = [album.model_dump() for album in results]
     
     return success_response(
-        data=results, 
+        data=data, 
         message=f"Encontrados {len(results)} álbuns."
     )
 
@@ -29,16 +29,14 @@ def search_albums(current_user):
 @require_auth
 def get_album_details(current_user, spotify_id):
     """
-    Retorna os detalhes completos (capa, faixas, data) de um álbum.
-    Uso: GET /api/albums/4wHb7j...
+    Retorna os detalhes completos de um álbum.
     """
-    # Chama o serviço (que tem cache de 7 DIAS)
     album = AlbumService.get_album_details(current_user, spotify_id)
     
     if not album:
         return error_response("Álbum não encontrado ou erro no Spotify.", 404)
-    
+
     return success_response(
-        data=album,
+        data=album.model_dump(),
         message="Detalhes do álbum recuperados."
     )

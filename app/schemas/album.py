@@ -14,7 +14,11 @@ class AlbumBase(BaseModel):
     artist: str
     cover_url: Optional[str] = None
     release_date: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
 
 class AlbumFull(AlbumBase):
     total_tracks: int
+    label: Optional[str] = None
     tracks: List[TrackBase] = []
