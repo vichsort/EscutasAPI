@@ -1,5 +1,10 @@
 from flask import Blueprint, redirect, request, jsonify, session, current_app
 from app.services.spotify_service import SpotifyService
+from app.extensions import db
+from app.services.spotify_service import SpotifyService
+from app.services.auth_service import AuthService
+from app.models.user import User
+import time
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api')
 
@@ -9,6 +14,7 @@ def login():
     Inicia o fluxo OAuth.
     Params (Saída): Redirect 302 para Spotify.
     """
+    sp_oauth = SpotifyService.get_oauth_object()
     service = SpotifyService()
     return redirect(service.get_auth_url())
 
@@ -18,24 +24,38 @@ def callback():
     Recebe o code e salva o token na sessão.
     Params (Entrada): ?code=XYZ
     """
+    if 'error' in request.args:
+        return jsonify({"error": request.args['error']}), 400
+    
     code = request.args.get('code')
     if not code:
-        return jsonify({"error": "No code provided"}), 400
-        
-    service = SpotifyService()
-    token_info = service.get_token_from_code(code)
-    session['token_info'] = token_info
-    
-    # Redireciona para o Frontend
-    # temporariamente fora pra testar enquanto n tiver frontend
-    # return redirect('http://localhost:5173/dashboard')
+        return jsonify({"error": "Código de autorização não fornecido"}), 400
 
-    # app/api/auth.py
-    return jsonify({
-        "message": "Login realizado com sucesso!",
-        "user_uuid": session.get('_user_id'), # Só pra confirmar
-        "note": "Copie o cookie 'session' no F12 -> Application -> Cookies"
-    })
+    try:
+        # 2. Troca de Código por Token (SpotifyService)
+        sp_oauth = SpotifyService.get_oauth_object()
+        token_info = sp_oauth.get_access_token(code)
+        
+        # 3. Obtenção de Dados do Usuário (SpotifyService / Spotipy)
+        import spotipy
+        sp = spotipy.Spotify(auth=token_info['access_token'])
+        spotify_user_data = sp.current_user()
+
+        # 4. Regra de Negócio / Persistência (AuthService) <--- AQUI MUDOU
+        # A rota não sabe se é insert ou update, o serviço resolve.
+        user = AuthService.login_or_register_user(spotify_user_data, token_info)
+
+        # 5. Gestão de Sessão (Responsabilidade da Rota)
+        session.clear()
+        session['_user_id'] = str(user.id)
+
+        return jsonify({
+            "message": "Login realizado com sucesso!",
+            "user": user.display_name
+        })
+
+    except Exception as e:
+        return jsonify({"error": "Falha no processo de login", "details": str(e)}), 500
 
 @auth_bp.route('/me')
 def me():
