@@ -51,9 +51,11 @@ def create_app(config_name='default'):
     from app.api.auth import auth_bp
     from app.api.albums import albums_bp
     from app.api.reviews import reviews_bp
+    from app.api.spotify_integration import spotify_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(albums_bp)
     app.register_blueprint(reviews_bp)
+    app.register_blueprint(spotify_bp)
     
     return app
