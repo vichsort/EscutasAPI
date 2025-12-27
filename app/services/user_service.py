@@ -1,12 +1,15 @@
+from typing import List, Optional
 from sqlalchemy import or_
 from app.models.user import User
+from app.schemas.user import UserPublic, UserProfile
 
 class UserService:
     
     @staticmethod
-    def search_users(query_str):
+    def search_users(query_str: str) -> List[UserPublic]:
         """
         Busca usuários por Nome (parcial) ou Spotify ID (exato).
+        Retorna uma lista de objetos Pydantic UserPublic.
         """
         if not query_str:
             return []
@@ -22,32 +25,23 @@ class UserService:
                 User.display_name.ilike(f'%{term}%'),
                 User.spotify_id == term
             )
-        ).limit(20).all() # Limitamos a 20 para não travar o front se buscar "a"
-        
-        # Formata o retorno (Dados Públicos apenas!)
-        results = []
-        for user in users:
-            results.append({
-                "uuid": str(user.id), # ID interno para links
-                "spotify_id": user.spotify_id, # ID visual
-                "display_name": user.display_name,
-                # Futuro: Adicionar campo 'avatar_url' no banco de dados
-            })
-            
-        return results
+        ).limit(20).all()
+
+        return [UserPublic.model_validate(user) for user in users]
 
     @staticmethod
-    def get_user_profile(user_uuid):
+    def get_user_profile(user_uuid: str) -> Optional[UserProfile]:
         """
-        Busca um usuário específico pelo UUID (para abrir o perfil dele).
+        Busca um usuário específico pelo UUID.
+        Retorna um objeto Pydantic UserProfile ou None.
         """
         user = User.query.get(user_uuid)
         if not user:
             return None
+
+        user_dto = UserProfile.model_validate(user)
+        
+        if user.created_at:
+            user_dto.joined_at = user.created_at.isoformat()
             
-        return {
-            "uuid": str(user.id),
-            "display_name": user.display_name,
-            "spotify_id": user.spotify_id,
-            "joined_at": user.created_at.isoformat()
-        }
+        return user_dto

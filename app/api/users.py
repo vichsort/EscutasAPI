@@ -18,9 +18,10 @@ def search_users(current_user):
         return error_response("Digite pelo menos 2 caracteres para buscar.", 400)
     
     results = UserService.search_users(query)
+    data = [user.model_dump() for user in results]
     
     return success_response(
-        data=results,
+        data=data,
         message=f"Encontrados {len(results)} usuários."
     )
 
@@ -35,4 +36,4 @@ def get_profile(current_user, user_uuid):
     if not user:
         return error_response("Usuário não encontrado.", 404)
         
-    return success_response(data=user)
+    return success_response(data=user.model_dump())
