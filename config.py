@@ -10,7 +10,9 @@ class Config:
     SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
     SPOTIFY_REDIRECT_URI = os.getenv('SPOTIFY_REDIRECT_URI')
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
-    SPOTIFY_SCOPE = 'user-library-read user-read-email' 
+
+    # Requested data for Spotify
+    SPOTIFY_SCOPE = 'user-read-email user-library-read user-read-recently-played user-read-currently-playing'
 
     # Cookie handling
     SESSION_COOKIE_HTTPONLY = True
@@ -36,7 +38,6 @@ class ProductionConfig(Config):
     SESSION_COOKIE_SECURE = True 
     SESSION_REFRESH_EACH_REQUEST = True
 
-# Dicionário para seleção fácil no app factory (se usasse factory pattern)
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
