@@ -1,18 +1,20 @@
 import bleach
+from typing import List, Dict
 from datetime import datetime
+from sqlalchemy import extract, and_
 from app.extensions import db
 from app.models.review import AlbumReview, TrackReview
 from app.models.user import User
 from app.utils.response_util import APIError
-from sqlalchemy import extract, and_
+
+from app.schemas.review import ReviewSummary, ReviewFull
 
 class ReviewService:
     
     @staticmethod
-    def create_review(user: User, data: dict) -> dict:
+    def create_review(user: User, data: dict) -> ReviewFull:
         """
-        Contém TODA a regra de negócio para criar uma review.
-        Lança APIError se algo estiver errado.
+        Cria uma review e retorna o objeto Pydantic ReviewFull.
         """
         # 1. Validação de Dados (Sanitization)
         raw_text = data.get('review_text', '')
@@ -40,7 +42,11 @@ class ReviewService:
 
             for t_data in tracks_data:
                 # Validação extra de nota
-                score = float(t_data['userScore'])
+                try:
+                    score = float(t_data['userScore'])
+                except (ValueError, TypeError):
+                     raise APIError(f"Nota inválida na faixa {t_data.get('name')}", 400)
+
                 if not (0 <= score <= 10):
                     raise APIError(f"Nota inválida na faixa {t_data.get('name')}", 400)
 
@@ -56,14 +62,13 @@ class ReviewService:
             
             db.session.add(review)
             db.session.commit()
-            
-            return review.to_dict()
+
+            return ReviewFull.model_validate(review)
 
         except APIError:
-            raise # Repassa erros que nós mesmos criamos
+            raise
         except Exception as e:
             db.session.rollback()
-            # Logar o erro real aqui seria o ideal
             print(f"Erro no banco: {e}") 
             raise APIError("Falha ao salvar review no banco de dados.", 500)
 
@@ -71,67 +76,38 @@ class ReviewService:
     def get_reviews(user_id, page=1, per_page=20, filters=None):
         """
         Busca reviews com filtros dinâmicos e paginação.
-        
-        Args:
-            user_id: UUID do usuário
-            page: Número da página
-            per_page: Itens por página
-            filters: Dict com 'start_date', 'end_date', 'album_id'
-        
-        Returns:
-            SQLAlchemy Pagination Object
+        Retorna o objeto Pagination do SQLAlchemy (o Controller serializa os itens).
         """
-        # 1. Query Base
         query = AlbumReview.query.filter_by(user_id=user_id)
         
-        # 2. Aplicação de Filtros Dinâmicos
         if filters:
-            # Filtro por Álbum Específico (Histórico do Álbum)
             if filters.get('album_id'):
                 query = query.filter_by(spotify_album_id=filters['album_id'])
             
-            # Filtro de Data Inicial (Para Calendário/Feed)
             if filters.get('start_date'):
                 try:
-                    # Espera formato YYYY-MM-DD
                     dt_start = datetime.strptime(filters['start_date'], '%Y-%m-%d')
-                    # Ajusta para o início do dia (00:00:00)
                     query = query.filter(AlbumReview.created_at >= dt_start)
                 except ValueError:
-                    pass # Ignora data inválida ou lança erro
+                    pass
 
-            # Filtro de Data Final
             if filters.get('end_date'):
                 try:
                     dt_end = datetime.strptime(filters['end_date'], '%Y-%m-%d')
-                    # Ajusta para o final do dia (hack simples: adicionar filtro < dia seguinte ou ajustar time)
-                    # Aqui vamos assumir comparação simples com o dia
                     query = query.filter(AlbumReview.created_at <= dt_end)
                 except ValueError:
                     pass
 
-        # 3. Ordenação (Mais recente primeiro)
         query = query.order_by(AlbumReview.created_at.desc())
         
-        # 4. Paginação
-        # error_out=False impede que retorne 404 se a página não existir (retorna lista vazia)
         return query.paginate(page=page, per_page=per_page, error_out=False)
 
     @staticmethod
-    def get_calendar_data(user_id, month, year):
+    def get_calendar_data(user_id, month, year) -> Dict[str, List[ReviewSummary]]:
         """
         Retorna as reviews organizadas por dia para o calendário.
-        
-        Estrutura de Retorno:
-        {
-            "27": [ {Review A}, {Review B} ],
-            "28": [ {Review C} ]
-        }
-        
-        A lista é ordenada da mais recente para a mais antiga.
-        Assim, o índice [0] é sempre o último álbum ouvido no dia (o que aparece na capa).
+        Retorna um dicionário onde os valores são Listas de ReviewSummary (Pydantic).
         """
-        # 1. Query: Filtra Mês/Ano e ordena por data DESC (mais recente primeiro)
         reviews = AlbumReview.query.filter(
             and_(
                 AlbumReview.user_id == user_id,
@@ -145,22 +121,10 @@ class ReviewService:
         for review in reviews:
             day = str(review.created_at.day)
             
-            # Se o dia ainda não existe no mapa, cria uma lista vazia
             if day not in calendar_map:
                 calendar_map[day] = []
-            
-            # Adiciona uma versão "leve" da review (sem tracks nem textão)
-            # Isso deixa o calendário rápido de carregar.
-            review_summary = {
-                "id": str(review.id),
-                "album_name": review.album_name,
-                "artist_name": review.artist_name,
-                "cover_url": review.cover_url,
-                "score": review.average_score,
-                "tier": review.tier,
-                "created_at": review.created_at.isoformat()
-            }
-            
-            calendar_map[day].append(review_summary)
+
+            summary = ReviewSummary.model_validate(review)
+            calendar_map[day].append(summary)
                 
         return calendar_map

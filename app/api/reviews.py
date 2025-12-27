@@ -4,6 +4,7 @@ from app.utils.decorator_util import require_auth
 from app.services.review_service import ReviewService
 from app.extensions import limiter
 from app.models.review import AlbumReview
+from app.schemas.review import ReviewFull, ReviewSummary
 
 reviews_bp = Blueprint('reviews', __name__, url_prefix='/api/reviews')
 
@@ -12,28 +13,15 @@ reviews_bp = Blueprint('reviews', __name__, url_prefix='/api/reviews')
 @limiter.limit("5 per minute")
 def create_review(current_user):
     """
-    Cria uma nova review completa (Álbum + Faixas + Texto).
-    
-    Payload Esperado (JSON):
-    {
-        "album": {
-            "id": "spotify_album_id",
-            "name": "Nome do Album",
-            "artist": "Nome do Artista",
-            "cover": "url_da_imagem"
-        },
-        "review_text": "Achei esse álbum incrível porque...",
-        "tracks": [
-            { "id": "t1", "name": "Faixa 1", "track_number": 1, "userScore": 9.5 },
-            { "id": "t2", "name": "Faixa 2", "track_number": 2, "userScore": 8.0 }
-        ]
-    }
+    Cria uma nova review completa.
+    Retorna o objeto validado pelo Schema ReviewFull.
     """
     data = request.json
-    result = ReviewService.create_review(current_user, data)
+
+    result_pydantic = ReviewService.create_review(current_user, data)
 
     return success_response(
-        data=result,
+        data=result_pydantic.model_dump(),
         message="Review salva com sucesso!",
         status_code=201
     )
@@ -42,16 +30,9 @@ def create_review(current_user):
 @require_auth
 def get_user_history(current_user):
     """
-    Retorna reviews filtradas e paginadas.
-    
-    Query Params Suportados:
-    - page (int): Padrão 1
-    - per_page (int): Padrão 20
-    - start_date (YYYY-MM-DD): Filtrar reviews a partir desta data
-    - end_date (YYYY-MM-DD): Filtrar reviews até esta data
-    - album_id (str): Filtrar reviews de um álbum específico
+    Retorna reviews filtradas.
+    Aqui aplicamos o Schema ReviewSummary em cada item da paginação.
     """
-    # 1. Captura Query Params
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     
@@ -61,7 +42,6 @@ def get_user_history(current_user):
         'album_id': request.args.get('album_id')
     }
     
-    # 2. Chama o Serviço
     pagination = ReviewService.get_reviews(
         user_id=current_user.id,
         page=page,
@@ -69,41 +49,46 @@ def get_user_history(current_user):
         filters=filters
     )
     
-    # 3. Retorna com Metadados
+    items_pydantic = [ReviewSummary.model_validate(item) for item in pagination.items]
+    items_dict = [item.model_dump() for item in items_pydantic]
+
+    pagination.items = items_dict 
+    
     return paginated_response(pagination, message="Histórico recuperado com sucesso.")
 
 @reviews_bp.route('/<uuid:review_id>', methods=['GET'])
 def get_review_details(review_id):
     """
-    Busca uma review específica pelo UUID.
-    Útil para compartilhar links: escutas.com/review/uuid-aqui
+    Busca review pelo UUID.
+    Usa ReviewFull para garantir formato consistente com o create.
     """
     review = AlbumReview.query.get_or_404(review_id)
     
-    return success_response(data=review.to_dict())
+    return success_response(
+        data=ReviewFull.model_validate(review).model_dump()
+    )
 
 @reviews_bp.route('/calendar', methods=['GET'])
 @require_auth
 def get_calendar(current_user):
     """
-    Endpoint do Calendário.
-    Recebe month (1-12) e year (ex: 2025).
-    Retorna dicionário indexado pelo dia.
+    Retorna dados do calendário.
     """
     try:
         month = int(request.args.get('month'))
         year = int(request.args.get('year'))
-        
         if not (1 <= month <= 12):
-            return error_response("Mês deve ser entre 1 e 12.", 400)
-            
+            raise ValueError
     except (TypeError, ValueError):
-        return error_response("Parâmetros 'month' e 'year' são obrigatórios e devem ser números inteiros.", 400)
+        return error_response("Parâmetros 'month' e 'year' inválidos.", 400)
 
-    # Chama o serviço
     calendar_data = ReviewService.get_calendar_data(current_user.id, month, year)
+
+    calendar_json = {}
+    for day, review_list in calendar_data.items():
+        calendar_json[day] = [r.model_dump() for r in review_list]
     
     return success_response(
-        data=calendar_data,
+        data=calendar_json,
         message=f"Dados do calendário de {month}/{year} recuperados."
     )
