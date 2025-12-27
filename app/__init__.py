@@ -3,6 +3,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from config import config
 from app.extensions import db, migrate, limiter
+from app.utils.response_util import APIError, handle_exception
 
 def create_app(config_name='default'):
     if config_name is None:
@@ -16,6 +17,9 @@ def create_app(config_name='default'):
     db.init_app(app)
     migrate.init_app(app, db)
     limiter.init_app(app)
+
+    app.register_error_handler(APIError, handle_exception)
+    app.register_error_handler(Exception, handle_exception)
 
     @app.errorhandler(429)
     def ratelimit_handler(e):

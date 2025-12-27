@@ -13,6 +13,7 @@ __pycache__/
 *$py.class
 *.manifest
 *.spec
+.cache
 
 # Ambientes Virtuais
 venv/
