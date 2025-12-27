@@ -4,6 +4,7 @@ from app.extensions import db
 from app.models.review import AlbumReview, TrackReview
 from app.models.user import User
 from app.utils.response_util import APIError
+from sqlalchemy import extract, and_
 
 class ReviewService:
     
@@ -115,3 +116,51 @@ class ReviewService:
         # 4. Paginação
         # error_out=False impede que retorne 404 se a página não existir (retorna lista vazia)
         return query.paginate(page=page, per_page=per_page, error_out=False)
+
+    @staticmethod
+    def get_calendar_data(user_id, month, year):
+        """
+        Retorna as reviews organizadas por dia para o calendário.
+        
+        Estrutura de Retorno:
+        {
+            "27": [ {Review A}, {Review B} ],
+            "28": [ {Review C} ]
+        }
+        
+        A lista é ordenada da mais recente para a mais antiga.
+        Assim, o índice [0] é sempre o último álbum ouvido no dia (o que aparece na capa).
+        """
+        # 1. Query: Filtra Mês/Ano e ordena por data DESC (mais recente primeiro)
+        reviews = AlbumReview.query.filter(
+            and_(
+                AlbumReview.user_id == user_id,
+                extract('month', AlbumReview.created_at) == month,
+                extract('year', AlbumReview.created_at) == year
+            )
+        ).order_by(AlbumReview.created_at.desc()).all()
+        
+        calendar_map = {}
+        
+        for review in reviews:
+            day = str(review.created_at.day)
+            
+            # Se o dia ainda não existe no mapa, cria uma lista vazia
+            if day not in calendar_map:
+                calendar_map[day] = []
+            
+            # Adiciona uma versão "leve" da review (sem tracks nem textão)
+            # Isso deixa o calendário rápido de carregar.
+            review_summary = {
+                "id": str(review.id),
+                "album_name": review.album_name,
+                "artist_name": review.artist_name,
+                "cover_url": review.cover_url,
+                "score": review.average_score,
+                "tier": review.tier,
+                "created_at": review.created_at.isoformat()
+            }
+            
+            calendar_map[day].append(review_summary)
+                
+        return calendar_map

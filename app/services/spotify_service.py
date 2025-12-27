@@ -3,6 +3,7 @@ from flask import session, current_app
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 from collections import Counter
+from spotipy.cache_handler import MemoryCacheHandler
 
 class SpotifyService:
     def __init__(self):
@@ -12,6 +13,21 @@ class SpotifyService:
             client_secret=current_app.config['SPOTIFY_CLIENT_SECRET'],
             redirect_uri=current_app.config['SPOTIFY_REDIRECT_URI'],
             scope=current_app.config['SPOTIFY_SCOPE']
+        )
+
+    @staticmethod
+    def get_oauth_object():
+        """
+        Cria o objeto de autenticação com as configs do .env.
+        Usa MemoryCacheHandler para não criar arquivos .cache no disco.
+        """
+        return SpotifyOAuth(
+            client_id=current_app.config['SPOTIFY_CLIENT_ID'],
+            client_secret=current_app.config['SPOTIFY_CLIENT_SECRET'],
+            redirect_uri=current_app.config['SPOTIFY_REDIRECT_URI'],
+            scope=current_app.config['SPOTIFY_SCOPE'],
+            cache_handler=MemoryCacheHandler(), 
+            show_dialog=True
         )
 
     def get_auth_url(self):

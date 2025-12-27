@@ -1,5 +1,5 @@
 from flask import Blueprint, request
-from app.utils.response_util import success_response, paginated_response
+from app.utils.response_util import success_response, paginated_response, error_response
 from app.utils.decorator_util import require_auth
 from app.services.review_service import ReviewService
 from app.extensions import limiter
@@ -81,3 +81,29 @@ def get_review_details(review_id):
     review = AlbumReview.query.get_or_404(review_id)
     
     return success_response(data=review.to_dict())
+
+@reviews_bp.route('/calendar', methods=['GET'])
+@require_auth
+def get_calendar(current_user):
+    """
+    Endpoint do Calendário.
+    Recebe month (1-12) e year (ex: 2025).
+    Retorna dicionário indexado pelo dia.
+    """
+    try:
+        month = int(request.args.get('month'))
+        year = int(request.args.get('year'))
+        
+        if not (1 <= month <= 12):
+            return error_response("Mês deve ser entre 1 e 12.", 400)
+            
+    except (TypeError, ValueError):
+        return error_response("Parâmetros 'month' e 'year' são obrigatórios e devem ser números inteiros.", 400)
+
+    # Chama o serviço
+    calendar_data = ReviewService.get_calendar_data(current_user.id, month, year)
+    
+    return success_response(
+        data=calendar_data,
+        message=f"Dados do calendário de {month}/{year} recuperados."
+    )
