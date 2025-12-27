@@ -31,6 +31,37 @@ def success_response(data=None, message="Success", status_code=200):
     }
     return jsonify(response), status_code
 
+def paginated_response(pagination, message="Success"):
+    """
+    Transforma um objeto Pagination do SQLAlchemy em resposta JSON padrão.
+    
+    Args:
+        pagination: Objeto retornado por query.paginate()
+        message: Mensagem de sucesso
+    """
+    return jsonify({
+        "status": "success",
+        "message": message,
+        "data": [item.to_dict() for item in pagination.items],
+        "meta": {
+            "page": pagination.page,
+            "per_page": pagination.per_page,
+            "total_items": pagination.total,
+            "total_pages": pagination.pages,
+            "has_next": pagination.has_next,
+            "has_prev": pagination.has_prev
+        }
+    }), 200
+
+def error_response(message, status_code=400, payload=None):
+    """
+    Padroniza erros da API.
+    """
+    rv = dict(payload or ())
+    rv['error'] = True
+    rv['message'] = message
+    return jsonify(rv), status_code
+
 def handle_exception(e):
     """
     Handler global para capturar APIError e erros genéricos.

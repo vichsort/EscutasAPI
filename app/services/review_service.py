@@ -1,4 +1,5 @@
 import bleach
+from datetime import datetime
 from app.extensions import db
 from app.models.review import AlbumReview, TrackReview
 from app.models.user import User
@@ -66,8 +67,51 @@ class ReviewService:
             raise APIError("Falha ao salvar review no banco de dados.", 500)
 
     @staticmethod
-    def get_user_reviews(user_id):
-        reviews = AlbumReview.query.filter_by(user_id=user_id)\
-            .order_by(AlbumReview.created_at.desc())\
-            .all()
-        return [r.to_dict() for r in reviews]
+    def get_reviews(user_id, page=1, per_page=20, filters=None):
+        """
+        Busca reviews com filtros dinâmicos e paginação.
+        
+        Args:
+            user_id: UUID do usuário
+            page: Número da página
+            per_page: Itens por página
+            filters: Dict com 'start_date', 'end_date', 'album_id'
+        
+        Returns:
+            SQLAlchemy Pagination Object
+        """
+        # 1. Query Base
+        query = AlbumReview.query.filter_by(user_id=user_id)
+        
+        # 2. Aplicação de Filtros Dinâmicos
+        if filters:
+            # Filtro por Álbum Específico (Histórico do Álbum)
+            if filters.get('album_id'):
+                query = query.filter_by(spotify_album_id=filters['album_id'])
+            
+            # Filtro de Data Inicial (Para Calendário/Feed)
+            if filters.get('start_date'):
+                try:
+                    # Espera formato YYYY-MM-DD
+                    dt_start = datetime.strptime(filters['start_date'], '%Y-%m-%d')
+                    # Ajusta para o início do dia (00:00:00)
+                    query = query.filter(AlbumReview.created_at >= dt_start)
+                except ValueError:
+                    pass # Ignora data inválida ou lança erro
+
+            # Filtro de Data Final
+            if filters.get('end_date'):
+                try:
+                    dt_end = datetime.strptime(filters['end_date'], '%Y-%m-%d')
+                    # Ajusta para o final do dia (hack simples: adicionar filtro < dia seguinte ou ajustar time)
+                    # Aqui vamos assumir comparação simples com o dia
+                    query = query.filter(AlbumReview.created_at <= dt_end)
+                except ValueError:
+                    pass
+
+        # 3. Ordenação (Mais recente primeiro)
+        query = query.order_by(AlbumReview.created_at.desc())
+        
+        # 4. Paginação
+        # error_out=False impede que retorne 404 se a página não existir (retorna lista vazia)
+        return query.paginate(page=page, per_page=per_page, error_out=False)

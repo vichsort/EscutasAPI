@@ -1,5 +1,5 @@
 from flask import Blueprint, request
-from app.utils.response_util import success_response
+from app.utils.response_util import success_response, paginated_response
 from app.utils.decorator_util import require_auth
 from app.services.review_service import ReviewService
 from app.extensions import limiter
@@ -42,11 +42,35 @@ def create_review(current_user):
 @require_auth
 def get_user_history(current_user):
     """
-    Retorna todas as reviews do usuário logado, da mais recente para a mais antiga.
+    Retorna reviews filtradas e paginadas.
+    
+    Query Params Suportados:
+    - page (int): Padrão 1
+    - per_page (int): Padrão 20
+    - start_date (YYYY-MM-DD): Filtrar reviews a partir desta data
+    - end_date (YYYY-MM-DD): Filtrar reviews até esta data
+    - album_id (str): Filtrar reviews de um álbum específico
     """
-    result = ReviewService.get_user_reviews(current_user.id)
-        
-    return success_response(data=result)
+    # 1. Captura Query Params
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    filters = {
+        'start_date': request.args.get('start_date'),
+        'end_date': request.args.get('end_date'),
+        'album_id': request.args.get('album_id')
+    }
+    
+    # 2. Chama o Serviço
+    pagination = ReviewService.get_reviews(
+        user_id=current_user.id,
+        page=page,
+        per_page=per_page,
+        filters=filters
+    )
+    
+    # 3. Retorna com Metadados
+    return paginated_response(pagination, message="Histórico recuperado com sucesso.")
 
 @reviews_bp.route('/<uuid:review_id>', methods=['GET'])
 def get_review_details(review_id):
