@@ -1,55 +1,44 @@
-from flask import Blueprint, request, jsonify
-from app.services.spotify_service import SpotifyService
+from flask import Blueprint, request
+from app.utils.response_util import success_response, error_response
+from app.utils.decorator_util import require_auth
+from app.services.album_service import AlbumService
 
 albums_bp = Blueprint('albums', __name__, url_prefix='/api/albums')
 
 @albums_bp.route('/search', methods=['GET'])
-def search():
+@require_auth
+def search_albums(current_user):
     """
-    Busca álbuns públicos.
-    Params (Entrada): ?q=termo&limit=10
-    Params (Saída): JSON List[{ id, name, artist, cover, release_date }]
+    Busca álbuns no Spotify.
+    Uso: GET /api/albums/search?q=Dark Side
     """
-    sp = SpotifyService().get_client()
-    if not sp: return jsonify({"error": "Unauthorized"}), 401
-
     query = request.args.get('q')
-    limit = request.args.get('limit', 10)
     
-    results = sp.search(q=query, limit=limit, type='album')
+    if not query:
+        return error_response("O termo de busca 'q' é obrigatório.", 400)
     
-    # Tratamento de dados (Clean Code)
-    data = [{
-        "id": item['id'],
-        "name": item['name'],
-        "artist": item['artists'][0]['name'],
-        "cover": item['images'][0]['url'] if item['images'] else None,
-        "release_date": item['release_date']
-    } for item in results['albums']['items']]
+    # Chama o serviço (que tem cache de 1 hora)
+    results = AlbumService.search_albums(current_user, query)
+    
+    return success_response(
+        data=results, 
+        message=f"Encontrados {len(results)} álbuns."
+    )
 
-    return jsonify(data)
-
-@albums_bp.route('/my-saved', methods=['GET'])
-def my_saved():
+@albums_bp.route('/<spotify_id>', methods=['GET'])
+@require_auth
+def get_album_details(current_user, spotify_id):
     """
-    Álbuns salvos do usuário.
-    Params (Entrada): ?limit=20&offset=0
-    Params (Saída): JSON List[{ id, name, artist, cover, added_at }]
+    Retorna os detalhes completos (capa, faixas, data) de um álbum.
+    Uso: GET /api/albums/4wHb7j...
     """
-    sp = SpotifyService().get_client()
-    if not sp: return jsonify({"error": "Unauthorized"}), 401
-
-    limit = request.args.get('limit', 20)
-    offset = request.args.get('offset', 0)
+    # Chama o serviço (que tem cache de 7 DIAS)
+    album = AlbumService.get_album_details(current_user, spotify_id)
     
-    results = sp.current_user_saved_albums(limit=limit, offset=offset)
+    if not album:
+        return error_response("Álbum não encontrado ou erro no Spotify.", 404)
     
-    data = [{
-        "id": item['album']['id'],
-        "name": item['album']['name'],
-        "artist": item['album']['artists'][0]['name'],
-        "cover": item['album']['images'][0]['url'] if item['album']['images'] else None,
-        "added_at": item['added_at']
-    } for item in results['items']]
-
-    return jsonify(data)
+    return success_response(
+        data=album,
+        message="Detalhes do álbum recuperados."
+    )

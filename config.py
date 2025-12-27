@@ -14,6 +14,15 @@ class Config:
     # Requested data for Spotify
     SPOTIFY_SCOPE = 'user-read-email user-library-read user-read-recently-played user-read-currently-playing'
 
+    # Cache configuration
+    CACHE_TYPE = 'RedisCache' if os.getenv('REDIS_URL') else 'SimpleCache'
+
+    if os.getenv('REDIS_URL'):
+        CACHE_REDIS_URL = os.getenv('REDIS_URL')
+        CACHE_DEFAULT_TIMEOUT = 300
+    else:
+        CACHE_THRESHOLD = 1000
+
     # Cookie handling
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
