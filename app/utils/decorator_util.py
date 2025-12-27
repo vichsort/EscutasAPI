@@ -1,9 +1,8 @@
 from functools import wraps
-from flask import session, request
 from app.services.spotify_service import SpotifyService
 from app.models.user import User
 from app.extensions import db
-from app.utils.api import APIError
+from app.utils.response_util import APIError
 
 def require_auth(f):
     @wraps(f)
