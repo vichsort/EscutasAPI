@@ -6,6 +6,7 @@ from app.extensions import db
 from app.models.review import AlbumReview, TrackReview
 from app.models.user import User
 from app.utils.response_util import APIError
+from sqlalchemy.orm import joinedload
 
 from app.schemas.review import ReviewSummary, ReviewFull
 
@@ -78,7 +79,7 @@ class ReviewService:
         Busca reviews com filtros dinâmicos e paginação.
         Retorna o objeto Pagination do SQLAlchemy (o Controller serializa os itens).
         """
-        query = AlbumReview.query.filter_by(user_id=user_id)
+        query = AlbumReview.query.options(joinedload(AlbumReview.tracks)).filter_by(user_id=user_id)
         
         if filters:
             if filters.get('album_id'):
