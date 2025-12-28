@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 
 class TrackBase(BaseModel):
@@ -9,14 +9,12 @@ class TrackBase(BaseModel):
     preview_url: Optional[str] = None
 
 class AlbumBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     spotify_id: str
     name: str
     artist: str
     cover_url: Optional[str] = None
     release_date: Optional[str] = None
-    
-    class Config:
-        from_attributes = True
 
 class AlbumFull(AlbumBase):
     total_tracks: int

@@ -1,13 +1,11 @@
-from pydantic import BaseModel, UUID4, Field
+from pydantic import BaseModel, UUID4, Field, ConfigDict
 from typing import Optional
 
 class UserPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     uuid: UUID4 = Field(..., alias="id")
     spotify_id: str
     display_name: Optional[str] = None
-    
-    class Config:
-        from_attributes = True
 
 class UserProfile(UserPublic):
     joined_at: Optional[str] = None

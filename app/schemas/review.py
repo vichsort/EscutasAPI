@@ -1,17 +1,16 @@
-from pydantic import BaseModel, UUID4
+from pydantic import BaseModel, UUID4, ConfigDict
 from datetime import datetime
 from typing import Optional, List, Dict
 
 class TrackSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID4
     track_name: str
     track_number: int
     score: float
-    
-    class Config:
-        from_attributes = True
 
 class ReviewSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID4
     album_name: str
     artist_name: str
@@ -19,9 +18,6 @@ class ReviewSummary(BaseModel):
     average_score: float
     tier: str
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 class ReviewFull(ReviewSummary):
     review_text: Optional[str] = None

@@ -1,4 +1,5 @@
 from typing import List, Optional
+from app.extensions import db
 from sqlalchemy import or_
 from app.models.user import User
 from app.schemas.user import UserPublic, UserProfile
@@ -35,10 +36,11 @@ class UserService:
         Busca um usuário específico pelo UUID.
         Retorna um objeto Pydantic UserProfile ou None.
         """
-        user = User.query.get(user_uuid)
+        user = db.session.get(User, user_uuid)
+        
         if not user:
             return None
-
+            
         user_dto = UserProfile.model_validate(user)
         
         if user.created_at:
