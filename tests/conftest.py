@@ -4,7 +4,7 @@ from app.extensions import db
 from app.models.user import User
 
 @pytest.fixture(scope='module')
-def test_app():
+def app():
     """
     Cria uma instância do App configurada para testes.
     Usa um banco SQLite em memória para ser rápido.
@@ -23,7 +23,11 @@ def test_app():
         yield app
 
 @pytest.fixture(scope='function')
-def test_db(test_app):
+def client(app):
+    return app.test_client()
+
+@pytest.fixture(scope='function')
+def test_db(app):
     """
     Cria um banco limpo para CADA teste.
     Depois do teste, apaga tudo.
