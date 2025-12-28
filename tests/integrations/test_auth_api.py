@@ -1,4 +1,4 @@
-import pytest
+from datetime import datetime, time
 from unittest.mock import patch, MagicMock
 from app.models.user import User
 
@@ -22,13 +22,12 @@ def test_callback_success(client, test_db):
     """
     Testa GET /api/callback
     Simula o retorno do Spotify com um código válido.
-    Deve criar o usuário no banco e logar na sessão.
     """
-    # Mocks para enganar o fluxo OAuth
+    # Dados falsos
     mock_token_info = {
         'access_token': 'fake_access_token',
         'refresh_token': 'fake_refresh_token',
-        'expires_at': 9999999999,
+        'expires_at': 1700000000,
         'scope': 'user-read-private'
     }
     
@@ -39,22 +38,31 @@ def test_callback_success(client, test_db):
         'images': []
     }
 
-    # A troca do Código pelo Token
-    with patch('spotipy.oauth2.SpotifyOAuth.get_access_token', return_value=mock_token_info):
-        # A busca dos dados do usuário (sp.current_user())
-        with patch('spotipy.Spotify.current_user', return_value=mock_spotify_user):
-            
-            # Chama a rota como se fosse o Spotify devolvendo o usuário
-            response = client.get('/api/callback?code=fake_auth_code')
+    with patch('app.services.spotify_service.SpotifyService.get_oauth_object') as mock_get_oauth:
+        
+        # Configura o objeto OAuth falso para retornar o token falso
+        mock_oauth_instance = MagicMock()
+        mock_oauth_instance.get_access_token.return_value = mock_token_info
+        mock_get_oauth.return_value = mock_oauth_instance
 
-            assert response.status_code in [200, 302] 
+        # Mockamos o cliente do Spotify
+        with patch('spotipy.Spotify') as mock_spotify_class:
             
-            # VERIFICAÇÃO PRINCIPAL: O usuário foi criado no banco?
+            # Configura a instância do cliente falso para retornar o usuário falso
+            mock_sp_instance = MagicMock()
+            mock_sp_instance.current_user.return_value = mock_spotify_user
+            mock_spotify_class.return_value = mock_sp_instance
+
+            response = client.get('/api/callback?code=fake_auth_code')
+            
+            assert response.status_code in [200, 302]
+            
+            # Verifica se o usuário foi salvo no banco
             user = test_db.session.query(User).filter_by(spotify_id='new_user_123').first()
             assert user is not None
             assert user.display_name == 'New User'
             
-            # Verifica se a sessão foi criada
+            # Verifica a sessão
             with client.session_transaction() as sess:
                 assert sess['user_id'] == str(user.id)
 
