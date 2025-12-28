@@ -1,70 +1,79 @@
 from flask import Blueprint, redirect, request, jsonify, session, current_app
 from app.services.spotify_service import SpotifyService
-from app.extensions import db
-from app.services.spotify_service import SpotifyService
 from app.services.auth_service import AuthService
-from app.models.user import User
-import time
+from app.utils.decorator_util import require_auth # <--- Importante!
+from app.schemas.user import UserPublic # Para retornar dados bonitos
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api')
 
 @auth_bp.route('/login')
 def login():
     """
-    Inicia o fluxo OAuth.
-    Params (Saída): Redirect 302 para Spotify.
+    Redireciona para o Spotify.
     """
+    # CORREÇÃO: Pegamos o objeto OAuth corretamente
     sp_oauth = SpotifyService.get_oauth_object()
-    service = SpotifyService()
-    return redirect(service.get_auth_url())
+    auth_url = sp_oauth.get_authorize_url()
+    return redirect(auth_url)
 
 @auth_bp.route('/callback')
 def callback():
     """
-    Recebe o code e salva o token na sessão.
-    Params (Entrada): ?code=XYZ
+    Recebe o código do Spotify, troca por tokens e loga o usuário.
     """
-    if 'error' in request.args:
-        return jsonify({"error": request.args['error']}), 400
-    
     code = request.args.get('code')
     if not code:
-        return jsonify({"error": "Código de autorização não fornecido"}), 400
+        return jsonify({"error": "Código não fornecido"}), 400
 
     try:
-        # 2. Troca de Código por Token (SpotifyService)
+        # 1. Troca código por token
         sp_oauth = SpotifyService.get_oauth_object()
         token_info = sp_oauth.get_access_token(code)
         
-        # 3. Obtenção de Dados do Usuário (SpotifyService / Spotipy)
+        # 2. Pega dados do usuário no Spotify
+        # Criamos um client temporário só com o token para pegar o ID
         import spotipy
         sp = spotipy.Spotify(auth=token_info['access_token'])
         spotify_user_data = sp.current_user()
 
-        # 4. Regra de Negócio / Persistência (AuthService) <--- AQUI MUDOU
-        # A rota não sabe se é insert ou update, o serviço resolve.
+        # 3. Lógica de Banco (AuthService)
         user = AuthService.login_or_register_user(spotify_user_data, token_info)
 
-        # 5. Gestão de Sessão (Responsabilidade da Rota)
+        # 4. Salva na Sessão
         session.clear()
-        session['_user_id'] = str(user.id)
-
+        session['user_id'] = str(user.id) # Usamos 'user_id' padrão
+        
+        # Redireciona para o Frontend (em dev pode ser JSON)
+        # return redirect("http://localhost:5173/dashboard") 
         return jsonify({
-            "message": "Login realizado com sucesso!",
+            "status": "success",
+            "message": "Login realizado!",
             "user": user.display_name
         })
 
     except Exception as e:
-        return jsonify({"error": "Falha no processo de login", "details": str(e)}), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@auth_bp.route('/logout')
+def logout():
+    """
+    Limpa a sessão.
+    """
+    session.clear()
+    return jsonify({"status": "success", "message": "Logout realizado."})
 
 @auth_bp.route('/me')
-def me():
+@require_auth # <--- CORREÇÃO: Usa o decorator para validar sessão
+def me(current_user):
     """
-    Verifica sessão ativa.
-    Params (Saída): JSON { logged_in: bool, user: dict }
+    Retorna o usuário logado.
     """
-    sp = SpotifyService().get_client()
-    if not sp:
-        return jsonify({"logged_in": False}), 401
+    # current_user já vem injetado pelo decorator (do banco de dados)
+    # Convertemos para Pydantic para padronizar o JSON
+    user_dto = UserPublic.model_validate(current_user)
     
-    return jsonify({"logged_in": True, "user": sp.current_user()})
+    return jsonify({
+        "status": "success",
+        "logged_in": True,
+        "data": user_dto.model_dump()
+    })
