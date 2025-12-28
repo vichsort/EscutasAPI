@@ -1,5 +1,5 @@
 from app.extensions import db
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
@@ -10,7 +10,7 @@ class User(db.Model):
     spotify_id = db.Column(db.String(100), unique=True, nullable=False, index=True)
     display_name = db.Column(db.String(150))
     email = db.Column(db.String(150))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     access_token = db.Column(db.Text, nullable=True)
     refresh_token = db.Column(db.Text, nullable=True)
     token_expires_at = db.Column(db.Integer, nullable=True)

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from app.extensions import db
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -17,7 +17,7 @@ class AlbumReview(db.Model):
     
     # Conteúdo da Review
     review_text = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Stats
     average_score = db.Column(db.Float, default=0.0)
