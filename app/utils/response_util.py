@@ -7,22 +7,21 @@ class APIError(Exception):
     Ex: raise APIError("Álbum não encontrado", 404)
     """
     def __init__(self, message, status_code=400, payload=None):
-        super().__init__()
+        super().__init__(message)
+        
         self.message = message
         self.status_code = status_code
         self.payload = payload
 
     def to_dict(self):
         rv = dict(self.payload or ())
-        rv['error'] = True
+        rv['status'] = 'error'
         rv['message'] = self.message
-        # Podemos adicionar código de erro interno aqui se quiser (ex: 'ERR_001')
         return rv
 
 def success_response(data=None, message="Success", status_code=200):
     """
     Padroniza o envelope de resposta de sucesso.
-    Sempre retornará: { "data": ..., "message": ..., "status": "success" }
     """
     response = {
         "status": "success",
@@ -34,15 +33,11 @@ def success_response(data=None, message="Success", status_code=200):
 def paginated_response(pagination, message="Success"):
     """
     Transforma um objeto Pagination do SQLAlchemy em resposta JSON padrão.
-    
-    Args:
-        pagination: Objeto retornado por query.paginate()
-        message: Mensagem de sucesso
     """
     return jsonify({
         "status": "success",
         "message": message,
-        "data": [item.to_dict() for item in pagination.items],
+        "data": pagination.items, 
         "meta": {
             "page": pagination.page,
             "per_page": pagination.per_page,
@@ -55,10 +50,10 @@ def paginated_response(pagination, message="Success"):
 
 def error_response(message, status_code=400, payload=None):
     """
-    Padroniza erros da API.
+    Padroniza erros da API gerados manualmente.
     """
     rv = dict(payload or ())
-    rv['error'] = True
+    rv['status'] = 'error'
     rv['message'] = message
     return jsonify(rv), status_code
 
@@ -69,6 +64,6 @@ def handle_exception(e):
     if isinstance(e, APIError):
         return jsonify(e.to_dict()), e.status_code
     
-    # Se for um erro desconhecido (bug no código), escondemos os detalhes em Prod
-    # Mas aqui vamos retornar 500 genérico
-    return jsonify({"error": True, "message": "Internal Server Error"}), 500
+    # Se for um erro desconhecido, retorna 500 genérico mas mantém JSON
+    print(f"Erro Interno não tratado: {e}") # Log simples para debug
+    return jsonify({"status": "error", "message": "Internal Server Error"}), 500
