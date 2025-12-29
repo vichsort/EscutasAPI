@@ -11,7 +11,6 @@ def login():
     """
     Redireciona para o Spotify.
     """
-    # CORREÇÃO: Pegamos o objeto OAuth corretamente
     sp_oauth = SpotifyService.get_oauth_object()
     auth_url = sp_oauth.get_authorize_url()
     return redirect(auth_url)
@@ -26,20 +25,20 @@ def callback():
         return jsonify({"error": "Código não fornecido"}), 400
 
     try:
-        # 1. Troca código por token
+        # Troca código por token
         sp_oauth = SpotifyService.get_oauth_object()
         token_info = sp_oauth.get_access_token(code)
         
-        # 2. Pega dados do usuário no Spotify
+        # Pega dados do usuário no Spotify
         # Criamos um client temporário só com o token para pegar o ID
         import spotipy
         sp = spotipy.Spotify(auth=token_info['access_token'])
         spotify_user_data = sp.current_user()
 
-        # 3. Lógica de Banco (AuthService)
+        # Lógica de Banco (AuthService)
         user = AuthService.login_or_register_user(spotify_user_data, token_info)
 
-        # 4. Salva na Sessão
+        # Salva na Sessão
         session.clear()
         session['user_id'] = str(user.id) # Usamos 'user_id' padrão
         
@@ -63,13 +62,11 @@ def logout():
     return jsonify({"status": "success", "message": "Logout realizado."})
 
 @auth_bp.route('/me')
-@require_auth # <--- CORREÇÃO: Usa o decorator para validar sessão
+@require_auth
 def me(current_user):
     """
     Retorna o usuário logado.
     """
-    # current_user já vem injetado pelo decorator (do banco de dados)
-    # Convertemos para Pydantic para padronizar o JSON
     user_dto = UserPublic.model_validate(current_user)
     
     return jsonify({

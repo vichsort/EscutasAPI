@@ -1,0 +1,783 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Escutas API",
+        "description": "API para gerenciamento de reviews de álbuns musicais.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:5000",
+            "description": "Servidor de Desenvolvimento Local"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Albums",
+            "description": "Busca e recuperação de dados de álbuns (Spotify e Custom)."
+        },
+        {
+            "name": "Auth",
+            "description": "Gerenciamento de Sessão e Autenticação via Spotify OAuth2."
+        },
+        {
+            "name": "Reviews",
+            "description": "Envio de informações de reviews, histórico e dados do calendário."
+        },
+        {
+            "name": "Spotify",
+            "description": "Integração em tempo real com o Player e Histórico do Spotify."
+        },
+        {
+            "name": "Users",
+            "description": "Busca de usuários e visualização de perfis públicos."
+        }
+    ],
+    "paths": {
+        "/api/albums/search": {
+            "get": {
+                "tags": [
+                    "Albums"
+                ],
+                "summary": "Buscar Álbuns",
+                "description": "Busca por álbuns utilizando a API do Spotify como fonte de dados.",
+                "operationId": "searchAlbums",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Termo de pesquisa (Nome do álbum ou artista).",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 2,
+                            "example": "Pink Floyd"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sucesso",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "sucesso_lista": {
+                                        "summary": "Lista de álbuns encontrados",
+                                        "value": {
+                                            "status": "success",
+                                            "data": [
+                                                {
+                                                    "id": "4LH4d3cOWNNsVw41Gqt2kv",
+                                                    "name": "The Dark Side of the Moon",
+                                                    "artist": "Pink Floyd",
+                                                    "cover_url": "https://i.scdn.co/image/ab67616d0000b27329f041...",
+                                                    "release_date": "1973-03-01"
+                                                },
+                                                {
+                                                    "id": "0bCAjiUamIFqKJsekOYh5l",
+                                                    "name": "Wish You Were Here",
+                                                    "artist": "Pink Floyd",
+                                                    "cover_url": "https://i.scdn.co/image/ab67616d0000b2735d48e2...",
+                                                    "release_date": "1975-09-12"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Erro de Validação",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "query_faltante": {
+                                        "summary": "Parâmetro 'q' ausente",
+                                        "value": {
+                                            "status": "error",
+                                            "message": "O termo de busca 'q' é obrigatório."
+                                        }
+                                    },
+                                    "query_curta": {
+                                        "summary": "Termo muito curto",
+                                        "value": {
+                                            "status": "error",
+                                            "message": "O termo de busca deve ter pelo menos 2 caracteres."
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Não Autorizado",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "sem_token": {
+                                        "summary": "Usuário não logado",
+                                        "value": {
+                                            "status": "error",
+                                            "message": "Authentication required"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/login": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Iniciar Login",
+                "description": "Inicia o fluxo OAuth2. Gera a URL de autorização do Spotify e redireciona o usuário para lá.",
+                "operationId": "authLogin",
+                "responses": {
+                    "302": {
+                        "description": "Redirecionamento para o Spotify",
+                        "headers": {
+                            "Location": {
+                                "description": "URL de autorização do Spotify (accounts.spotify.com...)",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/callback": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Callback do Spotify",
+                "description": "Endpoint de retorno chamado pelo Spotify após o usuário autorizar o acesso. Troca o código por tokens e cria a sessão.",
+                "operationId": "authCallback",
+                "parameters": [
+                    {
+                        "name": "code",
+                        "in": "query",
+                        "description": "Código de autorização temporário fornecido pelo Spotify.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "error",
+                        "in": "query",
+                        "description": "Retornado pelo Spotify caso o usuário negue o acesso.",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login realizado com sucesso",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "sucesso": {
+                                        "summary": "Usuário autenticado",
+                                        "value": {
+                                            "status": "success",
+                                            "message": "Login realizado!",
+                                            "user": "Wolnei Silva"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Erro de Requisição (Código ausente ou inválido)",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "codigo_faltante": {
+                                        "summary": "Falta parâmetro code",
+                                        "value": {
+                                            "error": "Código não fornecido"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erro Interno (Falha na troca de token ou banco)",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "erro_interno": {
+                                        "summary": "Falha no processo",
+                                        "value": {
+                                            "status": "error",
+                                            "message": "Falha no processo de login: Connection refused..."
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/logout": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout",
+                "description": "Encerra a sessão do usuário no servidor.",
+                "operationId": "authLogout",
+                "responses": {
+                    "200": {
+                        "description": "Sessão encerrada",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "sucesso": {
+                                        "summary": "Logout efetuado",
+                                        "value": {
+                                            "status": "success",
+                                            "message": "Logout realizado."
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Dados do Usuário Atual",
+                "description": "Retorna as informações do perfil do usuário logado na sessão atual. Usado pelo Frontend para persistência de estado.",
+                "operationId": "getCurrentUser",
+                "responses": {
+                    "200": {
+                        "description": "Dados do usuário recuperados",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "usuario_logado": {
+                                        "summary": "Usuário Logado",
+                                        "value": {
+                                            "status": "success",
+                                            "logged_in": true,
+                                            "data": {
+                                                "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+                                                "spotify_id": "wolnei_silva",
+                                                "display_name": "Wolnei Silva",
+                                                "joined_at": "2025-01-01T12:00:00"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Não Autorizado (Sessão inválida ou expirada)",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "nao_logado": {
+                                        "summary": "Sessão Expirada",
+                                        "value": {
+                                            "status": "error",
+                                            "message": "Authentication required"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/reviews": {
+            "post": {
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Criar Nova Review",
+                "description": "Cria uma review para um álbum (seja do Spotify ou Customizado). Calcula média e tier automaticamente.",
+                "operationId": "createReview",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "examples": {
+                                "spotify_album": {
+                                    "summary": "Review de Álbum do Spotify",
+                                    "value": {
+                                        "album": {
+                                            "id": "4LH4d3cOWNNsVw41Gqt2kv",
+                                            "name": "Dark Side of the Moon",
+                                            "artist": "Pink Floyd",
+                                            "cover": "https://i.scdn.co/..."
+                                        },
+                                        "review_text": "Obra prima.",
+                                        "tracks": [
+                                            {
+                                                "id": "t1",
+                                                "name": "Speak to Me",
+                                                "track_number": 1,
+                                                "userScore": 10
+                                            }
+                                        ]
+                                    }
+                                },
+                                "custom_album": {
+                                    "summary": "Review de Álbum Manual (Custom)",
+                                    "value": {
+                                        "album": {
+                                            "name": "Minha Mixtape",
+                                            "artist": "MC Local",
+                                            "cover": null
+                                        },
+                                        "review_text": "Relíquia local.",
+                                        "tracks": [
+                                            {
+                                                "name": "Intro",
+                                                "track_number": 1,
+                                                "userScore": 8.5
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Review Criada",
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "status": "success",
+                                    "message": "Review salva com sucesso!",
+                                    "data": {
+                                        "id": "uuid-da-review",
+                                        "album_name": "Dark Side of the Moon",
+                                        "average_score": 10.0,
+                                        "tier": "S"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Erro de Validação (Pydantic)"
+                    }
+                }
+            }
+        },
+        "/api/reviews/history": {
+            "get": {
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Histórico de Reviews",
+                "description": "Lista paginada das reviews do usuário logado.",
+                "operationId": "getReviewHistory",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 10
+                        }
+                    },
+                    {
+                        "name": "tier",
+                        "in": "query",
+                        "description": "Filtrar por Tier (S, A, B...)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por nome do álbum ou artista",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista Paginada",
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "status": "success",
+                                    "data": {
+                                        "total": 50,
+                                        "pages": 5,
+                                        "current_page": 1,
+                                        "items": [
+                                            {
+                                                "id": "uuid-1",
+                                                "album_name": "Album X",
+                                                "tier": "A",
+                                                "average_score": 8.5
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/reviews/calendar": {
+            "get": {
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Dados do Calendário",
+                "description": "Retorna reviews de um mês/ano específico agrupadas por dia.",
+                "operationId": "getReviewCalendar",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "month",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "year",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Dados Agrupados",
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "status": "success",
+                                    "data": {
+                                        "1": [],
+                                        "15": [
+                                            {
+                                                "id": "uuid-2",
+                                                "album_name": "Album Y",
+                                                "tier": "S"
+                                            }
+                                        ],
+                                        "30": []
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/spotify/now-playing": {
+            "get": {
+                "tags": [
+                    "Spotify Integration"
+                ],
+                "summary": "O que está tocando agora",
+                "description": "Retorna o status atual do player do usuário no Spotify. Útil para exibir um widget 'Ouvindo agora' no dashboard.",
+                "operationId": "getNowPlaying",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status recuperado",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "tocando": {
+                                        "summary": "Usuário ouvindo música",
+                                        "value": {
+                                            "status": "success",
+                                            "message": "Status do player recuperado.",
+                                            "data": {
+                                                "is_playing": true,
+                                                "track_name": "Time",
+                                                "artist_name": "Pink Floyd",
+                                                "album_name": "The Dark Side of the Moon",
+                                                "cover_url": "https://i.scdn.co/image/...",
+                                                "progress_ms": 125000,
+                                                "duration_ms": 420000
+                                            }
+                                        }
+                                    },
+                                    "parado": {
+                                        "summary": "Player pausado ou offline",
+                                        "value": {
+                                            "status": "success",
+                                            "message": "Status do player recuperado.",
+                                            "data": null
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "status": "error",
+                                    "message": "Token do Spotify expirado ou inválido."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/spotify/suggestions": {
+            "get": {
+                "tags": [
+                    "Spotify Integration"
+                ],
+                "summary": "Sugestões de Álbuns",
+                "description": "Analisa o histórico recente de reprodução do usuário no Spotify e sugere álbuns que ainda não foram avaliados no sistema.",
+                "operationId": "getAlbumSuggestions",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista de sugestões",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "sucesso": {
+                                        "summary": "Lista de álbuns sugeridos",
+                                        "value": {
+                                            "status": "success",
+                                            "message": "Encontradas 2 sugestões de álbuns.",
+                                            "data": [
+                                                {
+                                                    "id": "4LH4d3cOWNNsVw41Gqt2kv",
+                                                    "name": "The Dark Side of the Moon",
+                                                    "artist": "Pink Floyd",
+                                                    "cover_url": "https://i.scdn.co/image/...",
+                                                    "release_date": "1973"
+                                                },
+                                                {
+                                                    "id": "50o7kf2wLwVmOTVYJOTplm",
+                                                    "name": "OK Computer",
+                                                    "artist": "Radiohead",
+                                                    "cover_url": "https://i.scdn.co/image/...",
+                                                    "release_date": "1997"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/search": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Buscar Usuários",
+                "description": "Busca usuários pelo nome de exibição ou ID do Spotify.",
+                "operationId": "searchUsers",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Termo de busca (mínimo 2 caracteres).",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 2,
+                            "example": "Joao"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resultados da busca",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "sucesso": {
+                                        "summary": "Usuários encontrados",
+                                        "value": {
+                                            "status": "success",
+                                            "message": "Encontrados 2 usuários.",
+                                            "data": [
+                                                {
+                                                    "id": "uuid-1",
+                                                    "display_name": "João Silva",
+                                                    "spotify_id": "joaosilva",
+                                                    "avatar_url": "https://..."
+                                                },
+                                                {
+                                                    "id": "uuid-2",
+                                                    "display_name": "João Paulo",
+                                                    "spotify_id": "jp_music",
+                                                    "avatar_url": null
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Query inválida",
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "status": "error",
+                                    "message": "Digite pelo menos 2 caracteres para buscar."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{user_uuid}": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Perfil Público",
+                "description": "Retorna os detalhes públicos de um usuário específico pelo seu UUID.",
+                "operationId": "getUserProfile",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "user_uuid",
+                        "in": "path",
+                        "description": "UUID do usuário (ID interno do sistema)",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Perfil encontrado",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "sucesso": {
+                                        "summary": "Detalhes do Perfil",
+                                        "value": {
+                                            "status": "success",
+                                            "data": {
+                                                "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+                                                "spotify_id": "maria_music",
+                                                "display_name": "Maria Music",
+                                                "joined_at": "2025-02-15T14:30:00",
+                                                "avatar_url": "https://..."
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuário não encontrado",
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "status": "error",
+                                    "message": "Usuário não encontrado."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        }
+    }
+}
