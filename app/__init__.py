@@ -1,6 +1,7 @@
 import os
 from flask import Flask, jsonify
 from flask_cors import CORS
+from pydantic import ValidationError
 from config import config
 from app.extensions import db, migrate, limiter, cache
 from app.utils.response_util import APIError, handle_exception
@@ -11,44 +12,50 @@ def create_app(config_name='default'):
 
     app = Flask(__name__)
     app.config.from_object(config[config_name])
+    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
-    # Initialize extensions
-    CORS(app, supports_credentials=True)
+    # Extensões
     db.init_app(app)
     migrate.init_app(app, db)
     limiter.init_app(app)
     cache.init_app(app)
 
-    app.register_error_handler(APIError, handle_exception)
-    app.register_error_handler(Exception, handle_exception)
+    # Error Handlers Globais
 
+    # Erros customizados
+    app.register_error_handler(APIError, handle_exception)
+
+    # Erros de validação do Pydantic
+    @app.errorhandler(ValidationError)
+    def handle_pydantic_error(e):
+        return jsonify({
+            "status": "error",
+            "message": "Erro de validação nos dados enviados.",
+            "errors": e.errors()
+        }), 400
+
+    # Rate Limit (429)
     @app.errorhandler(429)
     def ratelimit_handler(e):
         return jsonify({
-            "error": "Você está indo rápido demais!", 
-            "description": f"Limite excedido: {e.description}"
+            "status": "error",
+            "message": "Você está indo rápido demais!", 
+            "description": e.description
         }), 429
 
-    # Captura erro 500 (Internal Server Error) genérico
-    @app.errorhandler(500)
-    def internal_error(e):
-        # Em produção, você logaria o erro real 'e' em um arquivo de log aqui
-        # app.logger.error(f"Erro Crítico: {e}")
-        return jsonify({
-            "error": "Erro interno do servidor.",
-            "message": "Nossa equipe já foi notificada. Tente novamente mais tarde."
-        }), 500
-
-    # Captura erro 404 (Not Found)
+    # Rota não encontrada (404)
     @app.errorhandler(404)
     def not_found(e):
-        return jsonify({"error": "Recurso não encontrado"}), 404
+        return jsonify({"status": "error", "message": "Recurso não encontrado"}), 404
 
-    # Import models to register them with SQLAlchemy
+    # Captura 500 e Exceções Genéricas não tratadas
+    app.register_error_handler(Exception, handle_exception)
+
+    # Modelos pra leitura do SQLAlchemy
     from app.models.user import User
     from app.models.review import AlbumReview, TrackReview
 
-    # Register Blueprints
+    # Blueprints
     from app.api.auth import auth_bp
     from app.api.albums import albums_bp
     from app.api.reviews import reviews_bp
