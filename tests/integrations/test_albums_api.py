@@ -12,7 +12,7 @@ def test_search_albums_api_success(client, user_mock):
     # Dados Falsos que o Service "retornaria"
     fake_albums = [
         AlbumBase(
-            spotify_id="123", 
+            id="123", 
             name="Mocked Album", 
             artist="Mocked Artist", 
             cover_url="http://fake.url"

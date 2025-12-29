@@ -8,12 +8,10 @@ class AlbumReview(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False)
-    
-    # Metadados do Álbum (Desnormalizados para leitura rápida)
-    spotify_album_id = db.Column(db.String(100), nullable=False)
+    spotify_album_id = db.Column(db.String(100), nullable=False, index=True)
     album_name = db.Column(db.String(255), nullable=False)
     artist_name = db.Column(db.String(255), nullable=False)
-    cover_url = db.Column(db.String(500))
+    cover_url = db.Column(db.String(500), nullable=True)
     
     # Conteúdo da Review
     review_text = db.Column(db.Text)
@@ -27,10 +25,7 @@ class AlbumReview(db.Model):
     tracks = db.relationship('TrackReview', backref='album_review', lazy=True, cascade="all, delete-orphan")
 
     __table_args__ = (
-        # Permite buscar "todas as reviews DO USUÁRIO X, ordenadas por DATA" instantaneamente.
         db.Index('idx_reviews_user_date', 'user_id', 'created_at'),
-
-        # Permite buscar "todas as reviews do álbum Dark Side of the Moon" rapidamente.
         db.Index('idx_reviews_spotify_album', 'spotify_album_id'),
     )
 
@@ -73,8 +68,7 @@ class TrackReview(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     album_review_id = db.Column(UUID(as_uuid=True), db.ForeignKey('album_reviews.id'), nullable=False)
-    
-    spotify_track_id = db.Column(db.String(100), nullable=False)
+    spotify_track_id = db.Column(db.String(100), nullable=True)
     track_name = db.Column(db.String(255), nullable=False)
     track_number = db.Column(db.Integer, nullable=False)
     score = db.Column(db.Float, nullable=False)

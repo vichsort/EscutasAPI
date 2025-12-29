@@ -10,7 +10,8 @@ class TrackBase(BaseModel):
 
 class AlbumBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    spotify_id: str
+
+    id: str
     name: str
     artist: str
     cover_url: Optional[str] = None

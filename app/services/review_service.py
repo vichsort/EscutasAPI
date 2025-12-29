@@ -1,131 +1,113 @@
-import bleach
-from typing import List, Dict
-from datetime import datetime
-from sqlalchemy import extract, and_
+import uuid
+from datetime import datetime, timezone
 from app.extensions import db
 from app.models.review import AlbumReview, TrackReview
-from app.models.user import User
+from app.services.spotify_service import SpotifyService
 from app.utils.response_util import APIError
-from sqlalchemy.orm import joinedload
-
-from app.schemas.review import ReviewSummary, ReviewFull
 
 class ReviewService:
-    
     @staticmethod
-    def create_review(user: User, data: dict) -> ReviewFull:
+    def create_review(user, payload):
         """
-        Cria uma review e retorna o objeto Pydantic ReviewFull.
+        Cria uma review de álbum.
+        Suporta tanto álbuns do Spotify quanto álbuns manuais (Custom).
         """
-        # 1. Validação de Dados (Sanitization)
-        raw_text = data.get('review_text', '')
-        clean_text = bleach.clean(raw_text, tags=[], strip=True)
+        album_data = payload['album']
+        tracks_data = payload['tracks']
+        review_text = payload.get('review_text')
+        spotify_id = album_data.get('id')
+        final_album_name = album_data['name']
+        final_artist_name = album_data['artist']
+        final_cover_url = album_data.get('cover')
+        final_album_id = None
 
-        if len(clean_text) > 5000:
-            raise APIError("Texto muito longo. Máximo 5000 caracteres.", 400)
+        if spotify_id:
 
-        album_data = data.get('album')
-        tracks_data = data.get('tracks', [])
-
-        if not album_data or not tracks_data:
-            raise APIError("Dados do álbum ou faixas estão faltando.", 400)
-
-        # 2. Lógica de Persistência
-        try:
-            review = AlbumReview(
-                user_id=user.id,
-                spotify_album_id=album_data['id'],
-                album_name=album_data['name'],
-                artist_name=album_data['artist'],
-                cover_url=album_data['cover'],
-                review_text=clean_text
-            )
-
-            for t_data in tracks_data:
-                # Validação extra de nota
-                try:
-                    score = float(t_data['userScore'])
-                except (ValueError, TypeError):
-                     raise APIError(f"Nota inválida na faixa {t_data.get('name')}", 400)
-
-                if not (0 <= score <= 10):
-                    raise APIError(f"Nota inválida na faixa {t_data.get('name')}", 400)
-
-                track = TrackReview(
-                    spotify_track_id=t_data['id'],
-                    track_name=t_data['name'],
-                    track_number=t_data['track_number'],
-                    score=score
-                )
-                review.tracks.append(track)
-
-            review.update_stats()
+            final_album_id = spotify_id
             
-            db.session.add(review)
-            db.session.commit()
+            # Opcional: Se for ID do Spotify puro (sem 'custom:'), 
+            # podemos buscar metadados atualizados para garantir consistência.
+            # Mas se quisermos performance, confiamos no payload.
+            # Vamos manter simples: Confiamos no Payload por enquanto.
+        else:
+            # --- FLUXO MANUAL (Custom) ---
+            # Gera um ID único nosso
+            final_album_id = f"custom:{uuid.uuid4()}"
 
-            return ReviewFull.model_validate(review)
+        review = AlbumReview(
+            user_id=user.id,
+            spotify_album_id=final_album_id, # Pode ser '4xWY...' ou 'custom:...'
+            album_name=final_album_name,
+            artist_name=final_artist_name,
+            cover_url=final_cover_url,
+            review_text=review_text,
+            created_at=datetime.now(timezone.utc)
+        )
+        
+        db.session.add(review)
+        db.session.flush() # Gera o ID da review para usar nas tracks
 
-        except APIError:
-            raise
-        except Exception as e:
-            db.session.rollback()
-            print(f"Erro no banco: {e}") 
-            raise APIError("Falha ao salvar review no banco de dados.", 500)
+        for track in tracks_data:
+            # No fluxo manual, track.get('id') será None.
+            # No fluxo Spotify, pode ter ID.
+            
+            track_review = TrackReview(
+                album_review_id=review.id,
+                spotify_track_id=track.get('id'),
+                track_name=track['name'],
+                track_number=track['track_number'],
+                score=float(track['userScore'])
+            )
+            db.session.add(track_review)
+
+        review.update_stats()
+        db.session.commit()
+
+        return review
 
     @staticmethod
-    def get_reviews(user_id, page=1, per_page=20, filters=None):
+    def get_calendar_data(user_id, month, year):
         """
-        Busca reviews com filtros dinâmicos e paginação.
-        Retorna o objeto Pagination do SQLAlchemy (o Controller serializa os itens).
+        Retorna reviews agrupadas por dia para o calendário.
+        Otimizado para buscar apenas o necessário do banco.
         """
-        query = AlbumReview.query.options(joinedload(AlbumReview.tracks)).filter_by(user_id=user_id)
+        from sqlalchemy import extract
+        
+        reviews = AlbumReview.query.filter(
+            AlbumReview.user_id == user_id,
+            extract('month', AlbumReview.created_at) == month,
+            extract('year', AlbumReview.created_at) == year
+        ).order_by(AlbumReview.created_at).all()
+        
+        calendar = {}
+        for review in reviews:
+            # Agrupa por dia (String "1", "2", "31")
+            day = str(review.created_at.day)
+            if day not in calendar:
+                calendar[day] = []
+            
+            calendar[day].append(review)
+            
+        return calendar
+
+    @staticmethod
+    def get_reviews(user_id, page=1, per_page=10, filters=None):
+        """
+        Retorna reviews paginadas para o histórico com filtros opcionais.
+        """
+        query = AlbumReview.query.filter_by(user_id=user_id)
         
         if filters:
-            if filters.get('album_id'):
-                query = query.filter_by(spotify_album_id=filters['album_id'])
+            if filters.get('tier'):
+                query = query.filter(AlbumReview.tier == filters['tier'])
+            if filters.get('search'):
+                term = f"%{filters['search']}%"
+                query = query.filter(
+                    (AlbumReview.album_name.ilike(term)) | 
+                    (AlbumReview.artist_name.ilike(term))
+                )
+
+        pagination = query.order_by(AlbumReview.created_at.desc())\
+            .paginate(page=page, per_page=per_page, error_out=False)
             
-            if filters.get('start_date'):
-                try:
-                    dt_start = datetime.strptime(filters['start_date'], '%Y-%m-%d')
-                    query = query.filter(AlbumReview.created_at >= dt_start)
-                except ValueError:
-                    pass
-
-            if filters.get('end_date'):
-                try:
-                    dt_end = datetime.strptime(filters['end_date'], '%Y-%m-%d')
-                    query = query.filter(AlbumReview.created_at <= dt_end)
-                except ValueError:
-                    pass
-
-        query = query.order_by(AlbumReview.created_at.desc())
-        
-        return query.paginate(page=page, per_page=per_page, error_out=False)
-
-    @staticmethod
-    def get_calendar_data(user_id, month, year) -> Dict[str, List[ReviewSummary]]:
-        """
-        Retorna as reviews organizadas por dia para o calendário.
-        Retorna um dicionário onde os valores são Listas de ReviewSummary (Pydantic).
-        """
-        reviews = AlbumReview.query.filter(
-            and_(
-                AlbumReview.user_id == user_id,
-                extract('month', AlbumReview.created_at) == month,
-                extract('year', AlbumReview.created_at) == year
-            )
-        ).order_by(AlbumReview.created_at.desc()).all()
-        
-        calendar_map = {}
-        
-        for review in reviews:
-            day = str(review.created_at.day)
-            
-            if day not in calendar_map:
-                calendar_map[day] = []
-
-            summary = ReviewSummary.model_validate(review)
-            calendar_map[day].append(summary)
-                
-        return calendar_map
+        return pagination

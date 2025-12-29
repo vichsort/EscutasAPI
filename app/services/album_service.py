@@ -25,7 +25,7 @@ class AlbumService:
                 cover = item['images'][0]['url'] if item['images'] else None
 
                 album = AlbumBase(
-                    spotify_id=item['id'],
+                    id=item['id'],
                     name=item['name'],
                     artist=", ".join([artist['name'] for artist in item['artists']]),
                     cover_url=cover,
@@ -65,7 +65,7 @@ class AlbumService:
             cover = album_data['images'][0]['url'] if album_data['images'] else None
 
             return AlbumFull(
-                spotify_id=album_data['id'],
+                id=album_data['id'],
                 name=album_data['name'],
                 artist=", ".join([a['name'] for a in album_data['artists']]),
                 cover_url=cover,

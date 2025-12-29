@@ -5,7 +5,7 @@ from app.services.review_service import ReviewService
 from app.services.user_service import UserService
 from app.extensions import limiter
 from app.models.review import AlbumReview
-from app.schemas.review import ReviewFull, ReviewSummary
+from app.schemas.review import ReviewFull, ReviewSummary, ReviewCreate
 
 reviews_bp = Blueprint('reviews', __name__, url_prefix='/api/reviews')
 
@@ -17,12 +17,12 @@ def create_review(current_user):
     Cria uma nova review completa.
     Retorna o objeto validado pelo Schema ReviewFull.
     """
-    data = request.json
+    payload_validado = ReviewCreate(**request.json)
 
-    result_pydantic = ReviewService.create_review(current_user, data)
+    result_orm = ReviewService.create_review(current_user, payload_validado.model_dump())
 
     return success_response(
-        data=result_pydantic.model_dump(),
+        data=ReviewFull.model_validate(result_orm).model_dump(),
         message="Review salva com sucesso!",
         status_code=201
     )

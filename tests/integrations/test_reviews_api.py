@@ -6,13 +6,11 @@ def test_create_review_api_success(client, user_mock):
     Testa o endpoint POST /api/reviews
     Deve criar a review e retornar 201 com JSON formatado.
     """
-    # 1. SIMULAR LOGIN (O Pulo do Gato 🐱)
     # Acessamos a sessão do cliente de testes e forçamos o user_id
     with client.session_transaction() as sess:
         sess['user_id'] = user_mock.id
-        sess['user_uuid'] = str(user_mock.id) # Depende de como seu auth checa
+        sess['user_uuid'] = str(user_mock.id)
 
-    # 2. Payload (O que o Frontend enviaria)
     payload = {
         "album": {
             "id": "abc_123",
@@ -26,10 +24,9 @@ def test_create_review_api_success(client, user_mock):
         ]
     }
 
-    # 3. Faz a requisição HTTP POST
     response = client.post('/api/reviews', json=payload)
 
-    # 4. Asserts HTTP
+    # Asserts HTTP
     assert response.status_code == 201
     assert response.json['status'] == 'success'
     
@@ -42,26 +39,24 @@ def test_get_history_api(client, user_mock):
     """
     Testa GET /api/reviews/history
     """
-    # 1. Login
+    # Login
     with client.session_transaction() as sess:
         sess['user_id'] = user_mock.id
 
-    # 2. Chama a rota
+    # Chama a rota
     response = client.get('/api/reviews/history')
 
-    # 3. Asserts
+    # Asserts
     assert response.status_code == 200
     assert 'data' in response.json
-    assert 'meta' in response.json # Garante que a paginação funcionou
+    assert 'meta' in response.json
 
 def test_unauthorized_access(client):
     """
     Testa se a API bloqueia quem não está logado.
     """
-    # NÃO fazemos login aqui intencionalmente
-    
+
     response = client.get('/api/reviews/history')
     
-    # Deve retornar 401 (Unauthorized) ou 302 (Redirect) dependendo da sua config
-    # Geralmente APIs retornam 401
-    assert response.status_code in [401, 302]
+    # Deve retornar 401 (Unauthorized)
+    assert response.status_code in [401]
