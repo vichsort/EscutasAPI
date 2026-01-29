@@ -61,6 +61,7 @@ def create_app(config_name='default'):
     from app.api.reviews import reviews_bp
     from app.api.spotify_integration import spotify_bp
     from app.api.users import users_bp
+    from app.api.blog import blog_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(albums_bp)
