@@ -1,76 +1,49 @@
-from flask import Blueprint, redirect, request, jsonify, session, current_app
-from app.services.spotify_service import SpotifyService
+from flask import Blueprint, request, jsonify
 from app.services.auth_service import AuthService
-from app.utils.decorator_util import require_auth # <--- Importante!
-from app.schemas.user import UserPublic # Para retornar dados bonitos
+from app.services.spotify_service import SpotifyService
+from app.utils.response_util import success_response, APIError
+from app.schemas.user import UserPublic 
 
-auth_bp = Blueprint('auth', __name__, url_prefix='/api')
+auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
-@auth_bp.route('/login')
-def login():
-    """
-    Redireciona para o Spotify.
-    """
-    sp_oauth = SpotifyService.get_oauth_object()
+@auth_bp.route('/spotify-url', methods=['GET'])
+def get_spotify_url():
+    """Gera a URL para o botão do Frontend"""
+    redirect_uri = request.args.get('redirect_uri', "http://127.0.0.1:5173/auth/callback")
+
+    sp_oauth = SpotifyService.get_oauth_object(redirect_uri=redirect_uri)
     auth_url = sp_oauth.get_authorize_url()
-    return redirect(auth_url)
+    
+    return jsonify({"url": auth_url})
 
-@auth_bp.route('/callback')
+@auth_bp.route('/callback', methods=['GET'])
 def callback():
     """
-    Recebe o código do Spotify, troca por tokens e loga o usuário.
+    Recebe code -> Chama Service -> Retorna JWT e UserDTO
     """
     code = request.args.get('code')
+    
+    # O front deve mandar a redirect_uri que usou, ou usamos a padrão
+    # O Spotify exige que seja EXATAMENTE a mesma usada para gerar a URL
+    redirect_uri = "http://127.0.0.1:5173/auth/callback" 
+
     if not code:
-        return jsonify({"error": "Código não fornecido"}), 400
+        raise APIError("Código de autorização não fornecido.", 400)
 
     try:
-        # Troca código por token
-        sp_oauth = SpotifyService.get_oauth_object()
-        token_info = sp_oauth.get_access_token(code)
-        
-        # Pega dados do usuário no Spotify
-        # Criamos um client temporário só com o token para pegar o ID
-        import spotipy
-        sp = spotipy.Spotify(auth=token_info['access_token'])
-        spotify_user_data = sp.current_user()
+        user, api_token = AuthService.execute_login(code, redirect_uri)
+        user_dto = UserPublic.model_validate(user).model_dump()
 
-        # Lógica de Banco (AuthService)
-        user = AuthService.login_or_register_user(spotify_user_data, token_info)
+        return success_response(
+            data={
+                "access_token": api_token,
+                "user": user_dto
+            },
+            message="Login realizado com sucesso!"
+        )
 
-        # Salva na Sessão
-        session.clear()
-        session['user_id'] = str(user.id) # Usamos 'user_id' padrão
-        
-        # Redireciona para o Frontend (em dev pode ser JSON)
-        # return redirect("http://localhost:5173/dashboard") 
-        return jsonify({
-            "status": "success",
-            "message": "Login realizado!",
-            "user": user.display_name
-        })
-
+    except ValueError as e:
+        raise APIError(str(e), 400)
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-@auth_bp.route('/logout')
-def logout():
-    """
-    Limpa a sessão.
-    """
-    session.clear()
-    return jsonify({"status": "success", "message": "Logout realizado."})
-
-@auth_bp.route('/me')
-@require_auth
-def me(current_user):
-    """
-    Retorna o usuário logado.
-    """
-    user_dto = UserPublic.model_validate(current_user)
-    
-    return jsonify({
-        "status": "success",
-        "logged_in": True,
-        "data": user_dto.model_dump()
-    })
+        print(f"Erro Auth: {e}")
+        raise APIError("Falha interna na autenticação.", 500)
