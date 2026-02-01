@@ -5,7 +5,7 @@ load_dotenv()
 
 class Config:
     """Configurações Base."""
-    SECRET_KEY = os.getenv('SECRET_KEY', 'default_dev_key')
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'default_dev_key')
     SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
     SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
     SPOTIFY_REDIRECT_URI = os.getenv('SPOTIFY_REDIRECT_URI')

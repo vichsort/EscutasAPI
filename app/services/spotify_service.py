@@ -1,4 +1,5 @@
 import time
+import os
 from typing import List, Optional
 from collections import Counter
 from flask import current_app
@@ -12,15 +13,19 @@ from app.schemas.spotify import CurrentPlaybackResponse, SuggestionResponse
 class SpotifyService:
     
     @staticmethod
-    def get_oauth_object():
+    def get_oauth_object(redirect_uri=None):
         """
-        Fábrica do objeto de autenticação OAuth.
-        Usa MemoryCacheHandler para evitar criar arquivos .cache no servidor.
+        Retorna o objeto de autenticação do Spotify.
+        Permite sobrescrever a redirect_uri (necessário para o fluxo via Frontend).
         """
+        # Se não passar nada, tenta pegar do .env (fallback)
+        if not redirect_uri:
+            redirect_uri = os.getenv("SPOTIFY_REDIRECT_URI")
+            
         return SpotifyOAuth(
-            client_id=current_app.config['SPOTIFY_CLIENT_ID'],
-            client_secret=current_app.config['SPOTIFY_CLIENT_SECRET'],
-            redirect_uri=current_app.config['SPOTIFY_REDIRECT_URI'],
+            client_id=os.getenv("SPOTIFY_CLIENT_ID"),
+            client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
+            redirect_uri=redirect_uri, # <--- AQUI ESTÁ O SEGREDO
             scope=current_app.config['SPOTIFY_SCOPE'],
             cache_handler=MemoryCacheHandler(), 
             show_dialog=True
@@ -68,7 +73,7 @@ class SpotifyService:
         cover = album['images'][0]['url'] if album['images'] else None
         
         return AlbumBase(
-            spotify_id=album['id'],
+            id=album['id'],
             name=album['name'],
             artist=", ".join([artist['name'] for artist in album['artists']]),
             cover_url=cover,

@@ -3,6 +3,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from pydantic import ValidationError
 from config import config
+from flask_jwt_extended import JWTManager
 from app.extensions import db, migrate, limiter, cache
 from app.utils.response_util import APIError, handle_exception
 
@@ -19,10 +20,8 @@ def create_app(config_name='default'):
     migrate.init_app(app, db)
     limiter.init_app(app)
     cache.init_app(app)
+    jwt = JWTManager(app)
 
-    # Error Handlers Globais
-
-    # Erros customizados
     app.register_error_handler(APIError, handle_exception)
 
     # Erros de validação do Pydantic
@@ -68,5 +67,6 @@ def create_app(config_name='default'):
     app.register_blueprint(reviews_bp)
     app.register_blueprint(spotify_bp)
     app.register_blueprint(users_bp)
+    app.register_blueprint(blog_bp)
     
     return app

@@ -1,28 +1,27 @@
 from functools import wraps
-from flask import session
+from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
 from app.models.user import User
-from app.extensions import db
 from app.utils.response_util import APIError
 
 def require_auth(f):
     """
     Decorator para proteger rotas.
-    Verifica se o usuário tem ID na sessão e se existe no banco local.
-    NÃO faz chamadas externas ao Spotify (Performance Otimizada).
+    Verifica se o usuário tem token atualizado para seguir
+    para as rotas protegidas.
     """
     @wraps(f)
-    def decorated_function(*args, **kwargs):
-        user_id = session.get('user_id') or session.get('user_uuid')
-        
-        if not user_id:
-            raise APIError("Sessão expirada ou usuário não logado.", 401)
-        
-        user = db.session.get(User, user_id)
-        
-        if not user:
-            session.clear()
-            raise APIError("Usuário não encontrado.", 401)
+    def decorated(*args, **kwargs):
+        try:
+            verify_jwt_in_request()
+            user_id = get_jwt_identity()
+            current_user = User.query.get(user_id)
             
-        return f(user, *args, **kwargs)
+            if not current_user:
+                raise APIError("Usuário não encontrado.", 401)
+                
+        except Exception:
+            raise APIError("Token inválido ou expirado.", 401)
+
+        return f(current_user, *args, **kwargs)
         
-    return decorated_function
+    return decorated
