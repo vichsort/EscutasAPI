@@ -25,7 +25,12 @@ def callback():
     
     # O front deve mandar a redirect_uri que usou, ou usamos a padrão
     # O Spotify exige que seja EXATAMENTE a mesma usada para gerar a URL
-    redirect_uri = "http://127.0.0.1:5173/auth/callback" 
+
+    # Nota para o Frontend: Quando o seu Front-end fizer a requisição POST/GET para o /api/auth/callback, 
+    # passar o parâmetro de volta 
+    # (ex: /api/auth/callback?code=123&redirect_uri=https://[seu-ngrok]/auth/callback), 
+    # senão ele vai cair no 127.0.0.1 padrão e falhar.
+    redirect_uri = request.args.get('redirect_uri', "http://127.0.0.1:5173/auth/callback")
 
     if not code:
         raise APIError("Código de autorização não fornecido.", 400)

@@ -36,7 +36,7 @@ class AuthService:
 
     @staticmethod
     def _upsert_user(spotify_data, token_info):
-        """Método privado para lidar apenas com o banco de dados"""
+        """Lida com a criação ou atualização do usuário após o login"""
         spotify_id = spotify_data['id']
         
         user = User.query.filter_by(spotify_id=spotify_id).first()
@@ -44,17 +44,22 @@ class AuthService:
         if not user:
             user = User(
                 spotify_id=spotify_id,
-                email=spotify_data.get('email'),
                 display_name=spotify_data.get('display_name')
             )
             db.session.add(user)
         
+        # Atualiza o nome (caso o usuário tenha mudado no Spotify)
         user.display_name = spotify_data.get('display_name')
-        if spotify_data.get('images'):
-            user.avatar_url = spotify_data['images'][0]['url']
+        
+        # Captura a URL da imagem (pega a primeira da lista, se existir)
+        images = spotify_data.get('images')
+        if images and len(images) > 0:
+            user.avatar_url = images[0]['url']
 
+        # Atualiza tokens
         user.access_token = token_info['access_token']
         user.refresh_token = token_info.get('refresh_token', user.refresh_token)
+        user.token_expires_at = token_info['expires_at']
         
         db.session.commit()
         return user

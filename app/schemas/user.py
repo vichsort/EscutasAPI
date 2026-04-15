@@ -6,6 +6,7 @@ class UserPublic(BaseModel):
     id: UUID4 = Field(..., alias="id")
     spotify_id: str
     display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 class UserProfile(UserPublic):
     joined_at: Optional[str] = None
