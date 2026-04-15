@@ -3,7 +3,13 @@ from datetime import datetime, timezone
 from app.extensions import db
 from app.models.post import BlogPost
 from app.services.spotify_service import SpotifyService
-from app.utils.response_util import APIError
+from spotipy.exceptions import SpotifyException
+from app.exceptions import (
+    BusinessRuleError, 
+    ResourceNotFoundError, 
+    AuthorizationError, 
+    SpotifyAPIError
+)
 
 class BlogService:
     TRACK_REGEX = r'spotify:track:([a-zA-Z0-9]{22})'
@@ -12,48 +18,52 @@ class BlogService:
     def _enrich_content_with_metadata(content):
         """
         VARRE o texto procurando IDs do Spotify.
-        BUSCA os dados na API.
+        BUSCA os dados na API em lotes (max 50 por vez).
         RETORNA um dicionário (Snapshot) para salvar no banco.
         """
         if not content:
             return {}
 
-        track_ids = set(re.findall(BlogService.TRACK_REGEX, content))
+        track_ids = list(set(re.findall(BlogService.TRACK_REGEX, content)))
         
         if not track_ids:
             return {}
 
         metadata = {}
-        sp = SpotifyService.get_client()
+        sp = SpotifyService.get_client(user=None)
 
         if not sp:
+            print("Aviso: Cliente Spotify não disponível para buscar metadados do Blog.")
             return {}
 
         try:
-            tracks_list = list(track_ids)
-            response = sp.tracks(tracks_list)
-            
-            for track in response['tracks']:
-                if track:
-                    metadata[track['id']] = {
-                        "name": track['name'],
-                        "artist": ", ".join([artist['name'] for artist in track['artists']]),
-                        "album": track['album']['name'],
-                        "cover_url": track['album']['images'][0]['url'] if track['album']['images'] else None,
-                        "preview_url": track['preview_url']
-                    }
-                    
-        except Exception as e:
-            print(f"Erro ao buscar metadados do Spotify: {e}")
+            # Agora o Spotify só aceita 50 tracks por vez no endpoint get_several_tracks.
+            # Vamos fatiar a lista de IDs em pedaços (chunks) de 50.
+            chunk_size = 50
+            for i in range(0, len(track_ids), chunk_size):
+                chunk = track_ids[i:i + chunk_size]
+                response = sp.tracks(chunk)
+                
+                for track in response['tracks']:
+                    if track:
+                        metadata[track['id']] = {
+                            "name": track['name'],
+                            "artist": ", ".join([artist['name'] for artist in track['artists']]),
+                            "album": track['album']['name'],
+                            "cover_url": track['album']['images'][0]['url'] if track['album']['images'] else None,
+                            "preview_url": track['preview_url']
+                        }
+                        
+        except SpotifyException as e:
+            raise SpotifyAPIError(f"Erro ao buscar metadados das faixas pro Blog: {e.msg}")
 
         return metadata
 
     @staticmethod
     def create_post(user, data):
         """Cria um novo post e gera o snapshot de metadados"""
-        
         if BlogPost.query.filter_by(slug=data['slug']).first():
-            raise APIError("Este slug já está em uso. Escolha outro.", 400)
+            raise BusinessRuleError("Este slug já está em uso. Escolha outro.")
 
         track_metadata = BlogService._enrich_content_with_metadata(data['content'])
 
@@ -79,11 +89,11 @@ class BlogService:
         post = BlogPost.query.get(post_id)
         
         if not post:
-            raise APIError("Post não encontrado", 404)
-        
+            raise ResourceNotFoundError("Post") 
+
         # Verifica permissão (apenas o autor pode editar)
         if str(post.user_id) != str(user_id):
-            raise APIError("Sem permissão para editar este post", 403)
+            raise AuthorizationError("Você não tem permissão para editar este post.")
 
         if 'title' in data: post.title = data['title']
         if 'summary' in data: post.summary = data['summary']
@@ -112,9 +122,7 @@ class BlogService:
             query = query.filter_by(status='PUBLISHED')
             
         post = query.first()
-        if not post:
-            raise APIError("Post não encontrado ou não publicado.", 404)
-            
+
         return post
 
     @staticmethod
