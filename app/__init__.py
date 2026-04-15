@@ -1,11 +1,12 @@
 import os
 from flask import Flask, jsonify
 from flask_cors import CORS
-from pydantic import ValidationError
+from pydantic import ValidationError as PydanticValidationError
 from config import config
 from flask_jwt_extended import JWTManager
 from app.extensions import db, migrate, limiter, cache
 from app.utils.response_util import APIError, handle_exception
+from app.exceptions import EscutasError, DataValidationError 
 
 def create_app(config_name='default'):
     if config_name is None:
@@ -22,16 +23,24 @@ def create_app(config_name='default'):
     cache.init_app(app)
     jwt = JWTManager(app)
 
+    # LEGADO - FUTURAMENTE APAGAR
     app.register_error_handler(APIError, handle_exception)
 
-    # Erros de validação do Pydantic
-    @app.errorhandler(ValidationError)
+    @app.errorhandler(EscutasError)
+    def handle_escutas_error(e):
+        """O Guardião: formata qualquer erro customizado nosso."""
+        response = jsonify(e.to_dict())
+        response.status_code = e.status_code
+        return response
+
+    # --- CONVERSOR DO PYDANTIC ---
+    @app.errorhandler(PydanticValidationError)
     def handle_pydantic_error(e):
-        return jsonify({
-            "status": "error",
-            "message": "Erro de validação nos dados enviados.",
-            "errors": e.errors()
-        }), 400
+        """Pega o erro feio do Pydantic e veste com a roupa do EscutasError"""
+        custom_error = DataValidationError(errors=e.errors())
+        response = jsonify(custom_error.to_dict())
+        response.status_code = custom_error.status_code
+        return response
 
     # Rate Limit (429)
     @app.errorhandler(429)
@@ -45,9 +54,9 @@ def create_app(config_name='default'):
     # Rota não encontrada (404)
     @app.errorhandler(404)
     def not_found(e):
-        return jsonify({"status": "error", "message": "Recurso não encontrado"}), 404
+        return jsonify({"status": "error", "message": "Rota ou recurso não encontrado."}), 404
 
-    # Captura 500 e Exceções Genéricas não tratadas
+    # Captura 500 e Exceções Genéricas não tratadas (O Limpa-Trilho)
     app.register_error_handler(Exception, handle_exception)
 
     # Modelos pra leitura do SQLAlchemy
