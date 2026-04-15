@@ -3,6 +3,8 @@ from app.utils.response_util import success_response
 from app.utils.decorator_util import require_auth
 from app.services.album_service import AlbumService
 from app.exceptions import BusinessRuleError, ResourceNotFoundError
+from app.schemas.album import CurationVoteInput
+from app.services.curation_service import CurationService
 
 albums_bp = Blueprint('albums', __name__, url_prefix='/api/albums')
 
@@ -40,4 +42,24 @@ def get_album_details(current_user, spotify_id):
     return success_response(
         data=album.model_dump(),
         message="Detalhes do álbum recuperados."
+    )
+
+@albums_bp.route('/<spotify_id>/curate', methods=['POST'])
+@require_auth
+def curate_album(current_user, spotify_id):
+    """
+    Registra o voto do usuário sobre o status de Platina do álbum.
+    Body: {"is_canonical": true/false}
+    """
+    payload = CurationVoteInput.model_validate(request.json)
+    
+    CurationService.register_vote(
+        user_id=current_user.id,
+        spotify_album_id=spotify_id,
+        is_canonical=payload.is_canonical
+    )
+
+    return success_response(
+        message="Voto de curadoria registrado. A comunidade agradece!",
+        data={"is_canonical": payload.is_canonical}
     )

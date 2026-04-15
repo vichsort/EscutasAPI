@@ -62,6 +62,8 @@ def create_app(config_name='default'):
     # Modelos pra leitura do SQLAlchemy
     from app.models.user import User
     from app.models.review import AlbumReview, TrackReview
+    from app.models.post import BlogPost 
+    from app.models.curation import AlbumCurationVote
 
     # Blueprints
     from app.api.auth import auth_bp

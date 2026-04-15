@@ -19,3 +19,8 @@ def calculate_tier(average_score: float) -> str:
             return threshold["tier"]
             
     return "C"
+
+# Regras de Curadoria da Comunidade para classificar ou desclassificar um album.
+# Quantos votos líquidos (votos positivos - votos negativos) são necessários 
+# para a comunidade alterar o status de um álbum na Platina.
+CURATION_THRESHOLD = 1

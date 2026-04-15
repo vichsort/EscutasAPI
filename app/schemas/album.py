@@ -23,3 +23,6 @@ class AlbumBase(BaseModel):
 class AlbumFull(AlbumBase):
     total_tracks: int
     tracks: List[TrackBase] = []
+
+class CurationVoteInput(BaseModel):
+    is_canonical: bool
