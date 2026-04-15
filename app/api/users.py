@@ -1,7 +1,8 @@
 from flask import Blueprint, request
 from app.utils import success_response, require_auth, paginated_response
+from app.models import UserPlatinum
 from app.services import UserService, ReviewService
-from app.schemas import ReviewSummary
+from app.schemas import ReviewSummary, PlatinumTrophyOutput
 from app.exceptions import BusinessRuleError, ResourceNotFoundError
 
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')
@@ -98,4 +99,20 @@ def get_user_calendar(target_user_id):
     return success_response(
         data=calendar_json,
         message=f"Calendário de {target_user.display_name} recuperado."
+    )
+
+@users_bp.route('/<uuid:target_user_id>/platinums', methods=['GET'])
+def get_user_platinums(target_user_id):
+    """Retorna todas as medalhas de platina conquistadas por um usuário."""
+    target_user = UserService.get_user_profile(str(target_user_id))
+    if not target_user:
+        raise ResourceNotFoundError("Usuário")
+
+    trophies = UserPlatinum.query.filter_by(user_id=target_user_id).order_by(UserPlatinum.achieved_at.desc()).all()
+    
+    data = [PlatinumTrophyOutput.model_validate(t).model_dump() for t in trophies]
+    
+    return success_response(
+        data=data,
+        message=f"{target_user.display_name} possui {len(data)} platinas."
     )

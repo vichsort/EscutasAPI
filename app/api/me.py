@@ -1,7 +1,8 @@
 from flask import Blueprint, request
 from app.utils import success_response, paginated_response, require_auth
-from app.services.review_service import ReviewService, SpotifyService
-from app.schemas import ReviewSummary
+from app.services import ReviewService, SpotifyService
+from app.schemas import ReviewSummary, PlatinumTrophyOutput
+from app.models import UserPlatinum
 from app.exceptions import BusinessRuleError
 
 me_bp = Blueprint('me', __name__, url_prefix='/api/me')
@@ -95,4 +96,17 @@ def get_suggestions(current_user):
     return success_response(
         data=suggestions,
         message="Sugestões recuperadas."
+    )
+
+@me_bp.route('/platinums', methods=['GET'])
+@require_auth
+def get_my_platinums(current_user):
+    """Retorna todas as medalhas de platina conquistadas por você."""
+    trophies = UserPlatinum.query.filter_by(user_id=current_user.id).order_by(UserPlatinum.achieved_at.desc()).all()
+    
+    data = [PlatinumTrophyOutput.model_validate(t).model_dump() for t in trophies]
+    
+    return success_response(
+        data=data,
+        message=f"Você possui {len(data)} platinas."
     )

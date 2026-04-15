@@ -1,26 +1,33 @@
-from .album import AlbumBase, AlbumFull, CurationVoteInput
+from .album import AlbumBase, AlbumFull, CurationVoteInput, TrackBase
+from .artist import ArtistSummary, PlatinumStats, DiscographyItem, PlatinumProgressOutput, PlatinumTrophyOutput
 from .blog import AuthorSummary, BlogPostDetail, BlogPostList, PostUpdate, PostCreate
-from .review import AlbumReviewBase, AlbumReviewDetail, AlbumReviewCreate, AlbumReviewUpdate, ReviewSummary
+from .review import TrackInput, AlbumInput, ReviewCreate, TrackOutput, ReviewSummary, ReviewFull
 from .spotify import CurrentPlaybackResponse, SuggestionResponse
 from .user import UserPublic, UserProfile
 
 __all__ = [
     'AlbumBase',
     'AlbumFull',
-    'CurationVoteInput',
+    'TrackBase',
+    'AlbumInput',
+    'ArtistSummary',
     'AuthorSummary',
     'BlogPostDetail',
     'BlogPostList',
-    'PostUpdate',
-    'PostCreate',
-    'AlbumReviewBase',
-    'AlbumReviewDetail',
-    'AlbumReviewCreate',
-    'AlbumReviewUpdate',
     'CurrentPlaybackResponse',
+    'CurationVoteInput',
+    'DiscographyItem',
+    'PlatinumProgressOutput',
+    'PlatinumStats',
+    'PlatinumTrophyOutput',
+    'PostCreate',
+    'PostUpdate',
+    'ReviewCreate',
+    'ReviewFull',
+    'ReviewSummary',
     'SuggestionResponse',
-    'UserPublic',
+    'TrackInput',
+    'TrackOutput',
     'UserProfile',
-    'ReviewSummary'
-
+    'UserPublic',
 ]

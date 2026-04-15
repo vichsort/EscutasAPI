@@ -17,7 +17,7 @@ def create_app(config_name='default'):
     register_extensions(app)
     register_error_handlers(app)
 
-    import app.models 
+    from app import models
 
     register_blueprints(app)
     

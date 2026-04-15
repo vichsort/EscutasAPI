@@ -1,6 +1,6 @@
 from app.extensions import db
 from app.models import User
-from app.services import SpotifyService
+from app.services.spotify_service import SpotifyService
 from flask_jwt_extended import create_access_token
 import spotipy
 

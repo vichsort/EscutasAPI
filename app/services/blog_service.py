@@ -2,7 +2,7 @@ import re
 from datetime import datetime, timezone
 from app.extensions import db
 from app.models import BlogPost
-from app.services import SpotifyService
+from app.services.spotify_service import SpotifyService
 from spotipy.exceptions import SpotifyException
 from app.exceptions import (
     BusinessRuleError, 
