@@ -19,5 +19,5 @@ class AlbumBase(BaseModel):
 
 class AlbumFull(AlbumBase):
     total_tracks: int
-    label: Optional[str] = None
+    # CORREÇÃO: Campo 'label' removido
     tracks: List[TrackBase] = []

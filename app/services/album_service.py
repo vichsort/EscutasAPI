@@ -2,6 +2,8 @@ from typing import List, Optional
 from app.extensions import cache
 from app.services.spotify_service import SpotifyService
 from app.schemas.album import AlbumBase, AlbumFull, TrackBase
+from spotipy.exceptions import SpotifyException
+from app.exceptions import SpotifyAPIError, ResourceNotFoundError
 
 class AlbumService:
     
@@ -13,10 +15,10 @@ class AlbumService:
         Retorna lista de objetos AlbumBase (Pydantic).
         """
         sp = SpotifyService.get_client(user)
-        if not sp: return []
 
         try:
-            results = sp.search(q=query, type='album', limit=20)
+            # CORREÇÃO: O limite máximo agora é 10
+            results = sp.search(q=query, type='album', limit=10)
             albums_list = []
             
             for item in results['albums']['items']:
@@ -35,9 +37,8 @@ class AlbumService:
                 
             return albums_list
 
-        except Exception as e:
-            print(f"Erro na busca de álbuns: {e}")
-            return []
+        except SpotifyException as e:
+            raise SpotifyAPIError(f"Erro na busca de álbuns: {e.msg}")
 
     @staticmethod
     @cache.memoize(timeout=604800)
@@ -47,7 +48,6 @@ class AlbumService:
         Retorna objeto AlbumFull (Pydantic).
         """
         sp = SpotifyService.get_client(user)
-        if not sp: return None
 
         try:
             album_data = sp.album(album_id)
@@ -71,10 +71,11 @@ class AlbumService:
                 cover_url=cover,
                 release_date=album_data['release_date'],
                 total_tracks=album_data['total_tracks'],
-                label=album_data.get('label'),
+                # CORREÇÃO: A gravadora (label) foi descontinuada pela API. Removido daqui.
                 tracks=tracks_objects
             )
 
-        except Exception as e:
-            print(f"Erro ao detalhar álbum {album_id}: {e}")
-            return None
+        except SpotifyException as e:
+            if e.http_status == 404:
+                raise ResourceNotFoundError("Álbum")
+            raise SpotifyAPIError(f"Erro ao detalhar álbum {album_id}: {e.msg}")

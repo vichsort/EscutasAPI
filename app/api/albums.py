@@ -1,7 +1,8 @@
 from flask import Blueprint, request
-from app.utils.response_util import success_response, error_response
+from app.utils.response_util import success_response
 from app.utils.decorator_util import require_auth
 from app.services.album_service import AlbumService
+from app.exceptions import BusinessRuleError, ResourceNotFoundError
 
 albums_bp = Blueprint('albums', __name__, url_prefix='/api/albums')
 
@@ -14,7 +15,7 @@ def search_albums(current_user):
     query = request.args.get('q')
     
     if not query:
-        return error_response("O termo de busca 'q' é obrigatório.", 400)
+        raise BusinessRuleError("O termo de busca 'q' é obrigatório.")
 
     results = AlbumService.search_albums(current_user, query)
 
@@ -32,9 +33,9 @@ def get_album_details(current_user, spotify_id):
     Retorna os detalhes completos de um álbum.
     """
     album = AlbumService.get_album_details(current_user, spotify_id)
-    
+
     if not album:
-        return error_response("Álbum não encontrado ou erro no Spotify.", 404)
+        raise ResourceNotFoundError("Álbum")
 
     return success_response(
         data=album.model_dump(),
