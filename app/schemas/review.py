@@ -6,7 +6,8 @@ class TrackInput(BaseModel):
     id: Optional[str] = None
     name: str 
     track_number: int
-    userScore: float = Field(..., ge=0, le=10)
+    userScore: Optional[float] = Field(None, ge=0, le=10)
+    is_ignored: bool = False
 
 class AlbumInput(BaseModel):
     id: Optional[str] = None
@@ -26,7 +27,8 @@ class TrackOutput(BaseModel):
     id: UUID4
     track_name: str 
     track_number: int
-    score: float
+    score: Optional[float] = None
+    is_ignored: bool
 
 class ReviewSummary(BaseModel):
     """Para listagens (Sidebar, Library)"""

@@ -33,14 +33,26 @@ class AlbumReview(db.Model):
     )
 
     def update_stats(self):
-        """Recalcula a média e o Tier baseada nas faixas."""
+        """Recalcula a média e o Tier baseada APENAS nas faixas válidas."""
         if not self.tracks:
             self.average_score = 0.0
             self.tier = 'E'
             return
 
-        total = sum(t.score for t in self.tracks)
-        self.average_score = round(total / len(self.tracks), 1)
+        # Filtra apenas as faixas que NÃO foram ignoradas
+        valid_tracks = [t for t in self.tracks if not t.is_ignored]
+        
+        # Trava de segurança no banco: se ignoraram tudo, zera (mas o Service vai impedir de chegar aqui)
+        if not valid_tracks:
+            self.average_score = 0.0
+            self.tier = 'E'
+            return
+
+        total = sum(t.score for t in valid_tracks)
+        self.average_score = round(total / len(valid_tracks), 1)
+        
+        # Tier
+        from app.constants import calculate_tier
         self.tier = calculate_tier(self.average_score)
 
     def to_dict(self):
@@ -67,12 +79,14 @@ class TrackReview(db.Model):
     spotify_track_id = db.Column(db.String(100), nullable=True)
     track_name = db.Column(db.String(255), nullable=False)
     track_number = db.Column(db.Integer, nullable=False)
-    score = db.Column(db.Float, nullable=False)
+    score = db.Column(db.Float, nullable=True) 
+    is_ignored = db.Column(db.Boolean, default=False, nullable=False)
 
     def to_dict(self):
         return {
             'id': str(self.id),
             'name': self.track_name,
             'track_number': self.track_number,
-            'score': self.score
+            'score': self.score,
+            'is_ignored': self.is_ignored
         }

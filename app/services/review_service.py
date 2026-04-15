@@ -69,6 +69,35 @@ class ReviewService:
             )
             db.session.add(track_review)
 
+        ignored_count = 0
+        total_tracks = len(tracks_data)
+
+        for track in tracks_data:
+            is_ignored = track.get('is_ignored', False)
+            score_val = None
+
+            if is_ignored:
+                ignored_count += 1
+            else:
+                try:
+                    score_val = float(track['userScore'])
+                except (ValueError, KeyError, TypeError):
+                    raise BusinessRuleError(f"Nota inválida para a faixa {track.get('name')}.")
+
+            track_review = TrackReview(
+                album_review_id=review.id,
+                spotify_track_id=track.get('id'),
+                track_name=track.get('name'),
+                track_number=track.get('track_number'),
+                score=score_val,
+                is_ignored=is_ignored
+            )
+            db.session.add(track_review)
+
+        if ignored_count == total_tracks and total_tracks > 0:
+            db.session.rollback()
+            raise BusinessRuleError("Você não pode ignorar todas as faixas do álbum. Pelo menos uma deve ser avaliada.")
+
         review.update_stats()
         db.session.commit()
 
