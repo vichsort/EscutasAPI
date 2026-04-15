@@ -3,7 +3,7 @@ from .artist import ArtistSummary, PlatinumStats, DiscographyItem, PlatinumProgr
 from .blog import AuthorSummary, BlogPostDetail, BlogPostList, PostUpdate, PostCreate
 from .review import TrackInput, AlbumInput, ReviewCreate, TrackOutput, ReviewSummary, ReviewFull
 from .spotify import CurrentPlaybackResponse, SuggestionResponse
-from .user import UserPublic, UserProfile
+from .user import UserPublic, UserProfile, StatsOverview, TopArtistStat, UserStatsOutput
 
 __all__ = [
     'AlbumBase',
@@ -30,4 +30,7 @@ __all__ = [
     'TrackOutput',
     'UserProfile',
     'UserPublic',
+    'StatsOverview',
+    'TopArtistStat',
+    'UserStatsOutput'
 ]

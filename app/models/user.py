@@ -21,6 +21,18 @@ class User(db.Model):
     # Relacionamento: Um usuário tem muitas avaliações de álbuns
     reviews = db.relationship('AlbumReview', backref='user', lazy=True)
 
+    @property
+    def review_count(self):
+        """Conta o total de reviews do usuário dinamicamente"""
+        from app.models.review import AlbumReview
+        return db.session.query(AlbumReview).filter_by(user_id=self.id).count()
+
+    @property
+    def platinum_count(self):
+        """Conta o total de platinas do usuário dinamicamente"""
+        from app.models.platinum import UserPlatinum
+        return db.session.query(UserPlatinum).filter_by(user_id=self.id).count()
+
     def update_tokens(self, token_info):
         """
         Atualiza os tokens e o tempo de expiração de forma centralizada.

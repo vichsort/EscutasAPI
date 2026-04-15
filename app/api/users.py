@@ -1,8 +1,8 @@
 from flask import Blueprint, request
 from app.utils import success_response, require_auth, paginated_response
 from app.models import UserPlatinum
-from app.services import UserService, ReviewService
-from app.schemas import ReviewSummary, PlatinumTrophyOutput
+from app.services import UserService, ReviewService, StatsService
+from app.schemas import ReviewSummary, PlatinumTrophyOutput, UserStatsOutput
 from app.exceptions import BusinessRuleError, ResourceNotFoundError
 
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')
@@ -115,4 +115,19 @@ def get_user_platinums(target_user_id):
     return success_response(
         data=data,
         message=f"{target_user.display_name} possui {len(data)} platinas."
+    )
+
+@users_bp.route('/<uuid:target_user_id>/stats', methods=['GET'])
+def get_user_stats(target_user_id):
+    """Retorna as estatísticas do perfil público de um usuário."""
+    target_user = UserService.get_user_profile(str(target_user_id))
+    if not target_user:
+        raise ResourceNotFoundError("Usuário")
+
+    raw_stats = StatsService.get_user_stats(target_user_id)
+    data = UserStatsOutput.model_validate(raw_stats).model_dump()
+    
+    return success_response(
+        data=data,
+        message=f"Estatísticas de {target_user.display_name} calculadas."
     )

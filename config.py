@@ -13,7 +13,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
 
     # Requested data for Spotify
-    SPOTIFY_SCOPE = 'user-read-email user-library-read user-read-recently-played user-read-currently-playing'
+    SPOTIFY_SCOPE = 'user-read-email user-library-read user-read-recently-played user-read-currently-playing user-top-read'
 
     # Cache configuration
     CACHE_TYPE = 'RedisCache' if os.getenv('REDIS_URL') else 'SimpleCache'

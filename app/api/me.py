@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from app.utils import success_response, paginated_response, require_auth
-from app.services import ReviewService, SpotifyService
-from app.schemas import ReviewSummary, PlatinumTrophyOutput
+from app.services import ReviewService, SpotifyService, StatsService
+from app.schemas import ReviewSummary, PlatinumTrophyOutput, UserStatsOutput
 from app.models import UserPlatinum
 from app.exceptions import BusinessRuleError
 
@@ -109,4 +109,18 @@ def get_my_platinums(current_user):
     return success_response(
         data=data,
         message=f"Você possui {len(data)} platinas."
+    )
+
+@me_bp.route('/stats', methods=['GET'])
+@require_auth
+def get_my_stats(current_user):
+    """Retorna as estatísticas para renderizar seus próprios gráficos."""
+    raw_stats = StatsService.get_user_stats(current_user.id)
+    
+    # Valida e limpa
+    data = UserStatsOutput.model_validate(raw_stats).model_dump()
+    
+    return success_response(
+        data=data,
+        message="Suas estatísticas foram calculadas com sucesso."
     )

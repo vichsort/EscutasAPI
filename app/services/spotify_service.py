@@ -149,3 +149,13 @@ class SpotifyService:
 
         except SpotifyException as e:
             raise SpotifyAPIError(f"Não foi possível buscar histórico recente: {e.msg}")
+
+    @staticmethod
+    def get_user_top_artists(user, limit=5, time_range='short_term'):
+        """
+        Retorna os artistas que o usuário mais ouviu recentemente.
+        time_range: 'short_term' (4 semanas), 'medium_term' (6 meses), 'long_term' (anos)
+        """
+        sp = SpotifyService.get_client(user)
+        results = sp.current_user_top_artists(limit=limit, time_range=time_range)
+        return results['items']
