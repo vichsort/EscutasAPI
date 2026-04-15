@@ -4,6 +4,7 @@ from app.services.spotify_service import SpotifyService
 from app.schemas.album import AlbumBase, AlbumFull, TrackBase
 from spotipy.exceptions import SpotifyException
 from app.exceptions import SpotifyAPIError, ResourceNotFoundError
+from app.utils.text_util import is_canonical_album, is_track_skippable, clean_album_title
 
 class AlbumService:
     
@@ -17,21 +18,23 @@ class AlbumService:
         sp = SpotifyService.get_client(user)
 
         try:
-            # CORREÇÃO: O limite máximo agora é 10
             results = sp.search(q=query, type='album', limit=10)
             albums_list = []
             
             for item in results['albums']['items']:
                 if item.get('album_type') == 'compilation': continue 
                 
+                raw_name = item['name']
                 cover = item['images'][0]['url'] if item['images'] else None
 
                 album = AlbumBase(
                     id=item['id'],
-                    name=item['name'],
+                    name=raw_name,
+                    clean_name=clean_album_title(raw_name),
                     artist=", ".join([artist['name'] for artist in item['artists']]),
                     cover_url=cover,
-                    release_date=item['release_date']
+                    release_date=item['release_date'],
+                    is_canonical=is_canonical_album(raw_name)
                 )
                 albums_list.append(album)
                 
@@ -54,12 +57,15 @@ class AlbumService:
 
             tracks_objects = []
             for track in album_data['tracks']['items']:
+                track_name = track['name']
+                
                 tracks_objects.append(TrackBase(
                     id=track['id'],
-                    name=track['name'],
+                    name=track_name,
                     track_number=track['track_number'],
                     duration_ms=track['duration_ms'],
-                    preview_url=track['preview_url']
+                    preview_url=track['preview_url'],
+                    suggested_ignore=is_track_skippable(track_name)
                 ))
 
             cover = album_data['images'][0]['url'] if album_data['images'] else None
@@ -71,7 +77,6 @@ class AlbumService:
                 cover_url=cover,
                 release_date=album_data['release_date'],
                 total_tracks=album_data['total_tracks'],
-                # CORREÇÃO: A gravadora (label) foi descontinuada pela API. Removido daqui.
                 tracks=tracks_objects
             )
 
