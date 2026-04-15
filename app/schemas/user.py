@@ -12,6 +12,8 @@ class UserProfile(UserPublic):
     joined_at: Optional[str] = None
     review_count: int = 0
     platinum_count: int = 0
+    blog_post_count: int = 0
+    current_streak: int = 0
 
 class StatsOverview(BaseModel):
     total_reviews: int

@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime, timezone
+from sqlalchemy import extract
 from app.extensions import db
 from app.models import AlbumReview, TrackReview
-from app.exceptions import BusinessRuleError
+from app.exceptions import BusinessRuleError, ResourceNotFoundError
 
 class ReviewService:
     @staticmethod
@@ -24,7 +25,6 @@ class ReviewService:
                 raise BusinessRuleError("Formato de data inválido. Use dd/mm/yyyy.")
         else:
             final_created_at = datetime.now(timezone.utc)
-
 
         spotify_id = album_data.get('id')
         final_album_name = album_data.get('name')
@@ -50,21 +50,6 @@ class ReviewService:
         
         db.session.add(review)
         db.session.flush()
-
-        for track in tracks_data:
-            try:
-                score_val = float(track['userScore'])
-            except (ValueError, KeyError):
-                raise BusinessRuleError(f"Nota inválida para a faixa {track.get('name')}.")
-
-            track_review = TrackReview(
-                album_review_id=review.id,
-                spotify_track_id=track.get('id'),
-                track_name=track.get('name'),
-                track_number=track.get('track_number'),
-                score=score_val
-            )
-            db.session.add(track_review)
 
         ignored_count = 0
         total_tracks = len(tracks_data)
@@ -98,15 +83,97 @@ class ReviewService:
         review.update_stats()
         db.session.commit()
 
+        from app.services.stats_service import StatsService
+        StatsService.calculate_and_update_streak(user.id)
+
         return review
+
+    @staticmethod
+    def update_review(user, review_id, payload):
+        """
+        Atualiza uma review existente (texto e notas das faixas).
+        """
+        review = AlbumReview.query.filter_by(id=review_id, user_id=user.id).first()
+        if not review:
+            raise ResourceNotFoundError("Review não encontrada ou você não tem permissão para alterá-la.")
+
+        # Atualiza o texto se foi enviado
+        if 'review_text' in payload:
+            review.review_text = payload['review_text']
+
+        # Atualiza as faixas se foram enviadas
+        tracks_data = payload.get('tracks', [])
+        if tracks_data:
+            ignored_count = 0
+            # Pega o total de faixas que já existem no banco para essa review para a validação
+            total_tracks = TrackReview.query.filter_by(album_review_id=review.id).count()
+
+            for track_data in tracks_data:
+                # Busca a faixa no banco pelo ID do Spotify
+                track_review = TrackReview.query.filter_by(
+                    album_review_id=review.id, 
+                    spotify_track_id=track_data.get('id')
+                ).first()
+
+                if track_review:
+                    is_ignored = track_data.get('is_ignored', track_review.is_ignored)
+                    score_val = None
+
+                    if is_ignored:
+                        ignored_count += 1
+                    else:
+                        try:
+                            # Tenta pegar a nota nova, se não vier, mantém a antiga
+                            score_val = float(track_data.get('userScore', track_review.score))
+                        except (ValueError, TypeError):
+                            raise BusinessRuleError(f"Nota nova inválida para a faixa {track_data.get('name')}.")
+
+                    # Aplica as mudanças
+                    track_review.is_ignored = is_ignored
+                    track_review.score = score_val
+                
+                # Conta quantas faixas no total acabaram ficando ignoradas
+                if not track_review and track_data.get('is_ignored'):
+                     ignored_count += 1
+            
+            # Precisamos contar as faixas que não vieram no payload mas já estavam ignoradas no banco
+            already_ignored_in_db = TrackReview.query.filter_by(album_review_id=review.id, is_ignored=True).count()
+            # Validação: se todas as faixas do álbum ficarem ignoradas após a edição
+            # (Simplificando a checagem: verificamos se sobrou alguma faixa com nota no álbum)
+            has_valid_track = TrackReview.query.filter_by(album_review_id=review.id, is_ignored=False).first()
+            
+            if not has_valid_track:
+                db.session.rollback()
+                raise BusinessRuleError("Você não pode ignorar todas as faixas do álbum. Pelo menos uma deve ser avaliada.")
+
+            # Recalcula a nota média e o tier do álbum baseado nas novas notas
+            review.update_stats()
+
+        db.session.commit()
+        return review
+
+    @staticmethod
+    def delete_review(user, review_id):
+        """
+        Deleta uma review do usuário e recalcula as estatísticas.
+        """
+        review = AlbumReview.query.filter_by(id=review_id, user_id=user.id).first()
+        if not review:
+            raise ResourceNotFoundError("Review não encontrada ou você não tem permissão para apagá-la.")
+
+        db.session.delete(review)
+        db.session.commit()
+
+        from app.services.stats_service import StatsService
+        StatsService.calculate_and_update_streak(user.id)
+
+        return True
 
     @staticmethod
     def get_calendar_data(user_id, month, year):
         """
         Retorna reviews agrupadas por dia para o calendário.
         """
-        from sqlalchemy import extract
-        
         reviews = AlbumReview.query.filter(
             AlbumReview.user_id == user_id,
             extract('month', AlbumReview.created_at) == month,

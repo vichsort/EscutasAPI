@@ -9,13 +9,13 @@ class User(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     spotify_id = db.Column(db.String(100), unique=True, nullable=False, index=True)
     display_name = db.Column(db.String(150))
-
-    # EMAIL REMOVIDO DA API DO SPOTIFY EM MARÇO!!!
-    # email = db.Column(db.String(150))
     avatar_url = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     access_token = db.Column(db.Text, nullable=True)
     refresh_token = db.Column(db.Text, nullable=True)
+    current_streak = db.Column(db.Integer, default=0)
+    longest_streak = db.Column(db.Integer, default=0)
+
     token_expires_at = db.Column(db.Integer, nullable=True)
 
     # Relacionamento: Um usuário tem muitas avaliações de álbuns
@@ -32,6 +32,12 @@ class User(db.Model):
         """Conta o total de platinas do usuário dinamicamente"""
         from app.models.platinum import UserPlatinum
         return db.session.query(UserPlatinum).filter_by(user_id=self.id).count()
+
+    @property
+    def blog_post_count(self):
+        """Conta quantos posts o usuário escreveu no blog"""
+        from app.models.post import BlogPost
+        return db.session.query(BlogPost).filter_by(author_id=self.id).count()
 
     def update_tokens(self, token_info):
         """
