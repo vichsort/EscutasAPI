@@ -17,6 +17,7 @@ class AlbumInput(BaseModel):
 class ReviewCreate(BaseModel):
     album: AlbumInput
     review_text: Optional[str] = None
+    listened_date: Optional[str] = None
     tracks: List[TrackInput]
 
 class TrackOutput(BaseModel):

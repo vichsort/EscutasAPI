@@ -3,60 +3,69 @@ from datetime import datetime, timezone
 from app.extensions import db
 from app.models.review import AlbumReview, TrackReview
 from app.services.spotify_service import SpotifyService
-from app.utils.response_util import APIError
+
+# Trazendo nosso tratamento de erro chique
+from app.exceptions import BusinessRuleError
 
 class ReviewService:
     @staticmethod
     def create_review(user, payload):
         """
         Cria uma review de álbum.
-        Suporta tanto álbuns do Spotify quanto álbuns manuais (Custom).
         """
-        album_data = payload['album']
-        tracks_data = payload['tracks']
+        album_data = payload.get('album', {})
+        tracks_data = payload.get('tracks', [])
         review_text = payload.get('review_text')
+        listened_date_str = payload.get('listened_date')
+        
+        if listened_date_str:
+            try:
+                # Converte dd/mm/yyyy para datetime
+                parsed_date = datetime.strptime(listened_date_str, "%d/%m/%Y")
+                final_created_at = parsed_date.replace(tzinfo=timezone.utc)
+            except ValueError:
+                raise BusinessRuleError("Formato de data inválido. Use dd/mm/yyyy.")
+        else:
+            final_created_at = datetime.now(timezone.utc)
+
+
         spotify_id = album_data.get('id')
-        final_album_name = album_data['name']
-        final_artist_name = album_data['artist']
+        final_album_name = album_data.get('name')
+        final_artist_name = album_data.get('artist')
         final_cover_url = album_data.get('cover')
         final_album_id = None
 
         if spotify_id:
-
             final_album_id = spotify_id
-            
-            # Opcional: Se for ID do Spotify puro (sem 'custom:'), 
-            # podemos buscar metadados atualizados para garantir consistência.
-            # Mas se quisermos performance, confiamos no payload.
-            # Vamos manter simples: Confiamos no Payload por enquanto.
         else:
-            # --- FLUXO MANUAL (Custom) ---
-            # Gera um ID único nosso
             final_album_id = f"custom:{uuid.uuid4()}"
 
+        # Criando o registro pai
         review = AlbumReview(
             user_id=user.id,
-            spotify_album_id=final_album_id, # Pode ser '4xWY...' ou 'custom:...'
+            spotify_album_id=final_album_id,
             album_name=final_album_name,
             artist_name=final_artist_name,
             cover_url=final_cover_url,
             review_text=review_text,
-            created_at=datetime.now(timezone.utc)
+            created_at=final_created_at
         )
         
         db.session.add(review)
-        db.session.flush() # Gera o ID da review para usar nas tracks
+        db.session.flush()
 
         for track in tracks_data:
-            # No fluxo manual, track.get('id') será None.
-            # No fluxo Spotify, pode ter ID.
-            
+            try:
+                score_val = float(track['userScore'])
+            except (ValueError, KeyError):
+                raise BusinessRuleError(f"Nota inválida para a faixa {track.get('name')}.")
+
             track_review = TrackReview(
                 album_review_id=review.id,
                 spotify_track_id=track.get('id'),
-                track_name=track['name'],
-                track_number=track['track_number'],
-                score=float(track['userScore'])
+                track_name=track.get('name'),
+                track_number=track.get('track_number'),
+                score=score_val
             )
             db.session.add(track_review)
 
@@ -69,7 +78,6 @@ class ReviewService:
     def get_calendar_data(user_id, month, year):
         """
         Retorna reviews agrupadas por dia para o calendário.
-        Otimizado para buscar apenas o necessário do banco.
         """
         from sqlalchemy import extract
         
@@ -81,7 +89,6 @@ class ReviewService:
         
         calendar = {}
         for review in reviews:
-            # Agrupa por dia (String "1", "2", "31")
             day = str(review.created_at.day)
             if day not in calendar:
                 calendar[day] = []

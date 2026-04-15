@@ -3,6 +3,9 @@ from app.extensions import db
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
+# IMPORTANDO A NOSSA CONSTANTE!
+from app.constants import calculate_tier
+
 class AlbumReview(db.Model):
     __tablename__ = 'album_reviews'
 
@@ -32,20 +35,13 @@ class AlbumReview(db.Model):
     def update_stats(self):
         """Recalcula a média e o Tier baseada nas faixas."""
         if not self.tracks:
-            self.average_score = 0
+            self.average_score = 0.0
             self.tier = 'E'
             return
 
         total = sum(t.score for t in self.tracks)
         self.average_score = round(total / len(self.tracks), 1)
-        
-        # Define Tier
-        if self.average_score >= 9.5: self.tier = 'S'
-        elif self.average_score >= 8.5: self.tier = 'A'
-        elif self.average_score >= 7.0: self.tier = 'B'
-        elif self.average_score >= 5.0: self.tier = 'C'
-        elif self.average_score >= 3.0: self.tier = 'D'
-        else: self.tier = 'E'
+        self.tier = calculate_tier(self.average_score)
 
     def to_dict(self):
         return {
