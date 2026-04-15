@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -35,6 +36,7 @@ class Config:
     RATELIMIT_STORAGE_URI = os.getenv('REDIS_URL', 'memory://')
     RATELIMIT_DEFAULT = "200 per day; 50 per hour"
     RATELIMIT_HEADERS_ENABLED = True
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=7)
 
 class DevelopmentConfig(Config):
     DEBUG = True
