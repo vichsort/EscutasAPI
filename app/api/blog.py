@@ -1,8 +1,7 @@
 from flask import Blueprint, request
-from app.services.blog_service import BlogService
-from app.schemas.blog import PostCreate, PostUpdate, BlogPostDetail, BlogPostList
-from app.utils.decorator_util import require_auth
-from app.utils.response_util import success_response, paginated_response
+from app.services import BlogService
+from app.schemas import PostCreate, PostUpdate, BlogPostDetail, BlogPostList
+from app.utils import success_response, paginated_response, require_auth
 from app.exceptions import ResourceNotFoundError
 
 blog_bp = Blueprint('blog', __name__, url_prefix='/api/blog')

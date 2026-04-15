@@ -8,10 +8,7 @@ from spotipy.oauth2 import SpotifyOAuth
 from spotipy.cache_handler import MemoryCacheHandler
 from spotipy.exceptions import SpotifyException
 from app.extensions import db
-from app.schemas.album import AlbumBase
-from app.schemas.spotify import CurrentPlaybackResponse, SuggestionResponse
-
-# NOSSAS NOVAS EXCEÇÕES
+from app.schemas import AlbumBase, CurrentPlaybackResponse, SuggestionResponse
 from app.exceptions import SpotifyAPIError, AuthenticationError 
 
 class SpotifyService:

@@ -1,5 +1,5 @@
 from app.extensions import db
-from app.models.curation import AlbumCurationVote
+from app.models import AlbumCurationVote
 from app.constants import CURATION_THRESHOLD
 
 class CurationService:

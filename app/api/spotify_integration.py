@@ -1,6 +1,5 @@
 from flask import Blueprint
-from app.utils.response_util import success_response
-from app.utils.decorator_util import require_auth
+from app.utils import success_response, require_auth
 from app.services.spotify_service import SpotifyService
 
 spotify_bp = Blueprint('spotify', __name__, url_prefix='/api/spotify')

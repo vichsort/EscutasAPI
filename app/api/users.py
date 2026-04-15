@@ -1,6 +1,5 @@
 from flask import Blueprint, request
-from app.utils.response_util import success_response, error_response
-from app.utils.decorator_util import require_auth
+from app.utils import success_response, error_response, require_auth
 from app.services.user_service import UserService
 
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')

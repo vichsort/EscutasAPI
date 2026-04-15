@@ -1,10 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from app.extensions import db
-from app.models.review import AlbumReview, TrackReview
-from app.services.spotify_service import SpotifyService
-
-# Trazendo nosso tratamento de erro chique
+from app.models import AlbumReview, TrackReview
 from app.exceptions import BusinessRuleError
 
 class ReviewService:

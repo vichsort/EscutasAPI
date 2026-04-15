@@ -1,8 +1,7 @@
 from flask import Blueprint, request, jsonify
-from app.services.auth_service import AuthService
-from app.services.spotify_service import SpotifyService
-from app.utils.response_util import success_response, APIError
-from app.schemas.user import UserPublic 
+from app.services import AuthService, SpotifyService
+from app.utils import success_response, APIError
+from app.schemas import UserPublic 
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 

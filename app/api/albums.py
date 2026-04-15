@@ -1,10 +1,8 @@
 from flask import Blueprint, request
-from app.utils.response_util import success_response
-from app.utils.decorator_util import require_auth
-from app.services.album_service import AlbumService
+from app.utils import success_response, require_auth
+from app.services import AlbumService, CurationService
 from app.exceptions import BusinessRuleError, ResourceNotFoundError
-from app.schemas.album import CurationVoteInput
-from app.services.curation_service import CurationService
+from app.schemas import CurationVoteInput
 
 albums_bp = Blueprint('albums', __name__, url_prefix='/api/albums')
 

@@ -1,8 +1,8 @@
 from typing import List, Optional
 from app.extensions import db
 from sqlalchemy import or_
-from app.models.user import User
-from app.schemas.user import UserPublic, UserProfile
+from app.models import User
+from app.schemas import UserPublic, UserProfile
 
 class UserService:
     

@@ -1,11 +1,10 @@
 from typing import List, Optional
 from app.extensions import cache
-from app.services.spotify_service import SpotifyService
-from app.schemas.album import AlbumBase, AlbumFull, TrackBase
+from app.schemas import AlbumBase, AlbumFull, TrackBase
 from spotipy.exceptions import SpotifyException
-from app.services.curation_service import CurationService
+from app.services import CurationService, SpotifyService
 from app.exceptions import SpotifyAPIError, ResourceNotFoundError
-from app.utils.text_util import is_canonical_album, is_track_skippable, clean_album_title
+from app.utils import is_canonical_album, is_track_skippable, clean_album_title
 
 class AlbumService:
     

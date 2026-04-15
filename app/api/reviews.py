@@ -1,11 +1,9 @@
 from flask import Blueprint, request
-from app.utils.response_util import success_response, paginated_response
-from app.utils.decorator_util import require_auth
-from app.services.review_service import ReviewService
-from app.services.user_service import UserService
+from app.utils import success_response, paginated_response, require_auth
+from app.services import ReviewService, UserService
 from app.extensions import limiter
-from app.models.review import AlbumReview
-from app.schemas.review import ReviewFull, ReviewSummary, ReviewCreate
+from app.models import AlbumReview
+from app.schemas import ReviewFull, ReviewSummary, ReviewCreate
 from app.exceptions import BusinessRuleError, ResourceNotFoundError
 
 reviews_bp = Blueprint('reviews', __name__, url_prefix='/api/reviews')

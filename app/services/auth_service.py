@@ -1,9 +1,6 @@
-from datetime import datetime, timezone
 from app.extensions import db
-from app.models.user import User
-from app.extensions import db
-from app.models.user import User
-from app.services.spotify_service import SpotifyService
+from app.models import User
+from app.services import SpotifyService
 from flask_jwt_extended import create_access_token
 import spotipy
 
