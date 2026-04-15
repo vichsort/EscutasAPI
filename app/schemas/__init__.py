@@ -1,6 +1,6 @@
 from .album import AlbumBase, AlbumFull, CurationVoteInput
 from .blog import AuthorSummary, BlogPostDetail, BlogPostList, PostUpdate, PostCreate
-from .review import AlbumReviewBase, AlbumReviewDetail, AlbumReviewCreate, AlbumReviewUpdate
+from .review import AlbumReviewBase, AlbumReviewDetail, AlbumReviewCreate, AlbumReviewUpdate, ReviewSummary
 from .spotify import CurrentPlaybackResponse, SuggestionResponse
 from .user import UserPublic, UserProfile
 
@@ -21,5 +21,6 @@ __all__ = [
     'SuggestionResponse',
     'UserPublic',
     'UserProfile',
+    'ReviewSummary'
 
 ]
