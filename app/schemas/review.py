@@ -20,6 +20,7 @@ class ReviewCreate(BaseModel):
     review_text: Optional[str] = None
     listened_date: Optional[str] = None
     tracks: List[TrackInput]
+    is_private: bool = False
 
 class TrackOutput(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -44,6 +45,8 @@ class ReviewSummary(BaseModel):
     average_score: float
     tier: str
     created_at: datetime
+    is_private: bool
+    artist_genres: list = []
 
 class ReviewFull(ReviewSummary):
     """Para visualização detalhada. Herda tudo acima e adiciona as faixas."""

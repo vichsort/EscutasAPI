@@ -7,24 +7,49 @@ from datetime import datetime, date, timedelta
 from sqlalchemy import func
 
 class StatsService:
+    from sqlalchemy import func, desc
+from app.extensions import db
+from app.models.review import AlbumReview
+from app.models.platinum import UserPlatinum
+from app.services.spotify_service import SpotifyService
+from app.services.artist_service import ArtistService
+
+class StatsService:
+
     @staticmethod
-    def get_user_stats(user_id: str) -> dict:
+    def get_user_stats(user_id: str, request_user_id: str = None) -> dict:
         """
         Calcula as estatísticas pesadas de um usuário direto no banco de dados.
         """
-        # Overview (A média geral de notas)
-        # scalar() pega o valor direto ao invés de uma tupla
-        avg_result = db.session.query(func.avg(AlbumReview.score)).filter(AlbumReview.user_id == user_id).scalar()
-        avg_score = round(avg_result, 2) if avg_result else 0.0
+        is_public_view = str(request_user_id) != str(user_id)
 
-        total_reviews = db.session.query(AlbumReview).filter(AlbumReview.user_id == user_id).count()
+        # Total de Reviews
+        total_query = db.session.query(AlbumReview).filter(AlbumReview.user_id == user_id)
+        if is_public_view:
+            total_query = total_query.filter(AlbumReview.is_private == False)
+        total_reviews = total_query.count()
+
+        # Total de Platinas (Platinas continuam normais, pois são conquistas de artistas)
         total_plats = db.session.query(UserPlatinum).filter(UserPlatinum.user_id == user_id).count()
 
+        # Overview (A média geral de notas)
+        avg_query = db.session.query(func.avg(AlbumReview.score)).filter(AlbumReview.user_id == user_id)
+        if is_public_view:
+            avg_query = avg_query.filter(AlbumReview.is_private == False)
+        
+        avg_result = avg_query.scalar() # scalar() pega o valor direto ao invés de uma tupla
+        avg_score = round(avg_result, 2) if avg_result else 0.0
+
         # Distribuição de Tiers (Agrupa e conta)
-        tiers_query = db.session.query(
+        tiers_query_base = db.session.query(
             AlbumReview.tier, 
             func.count(AlbumReview.id)
-        ).filter(AlbumReview.user_id == user_id).group_by(AlbumReview.tier).all()
+        ).filter(AlbumReview.user_id == user_id)
+        
+        if is_public_view:
+            tiers_query_base = tiers_query_base.filter(AlbumReview.is_private == False)
+            
+        tiers_query = tiers_query_base.group_by(AlbumReview.tier).all()
 
         # Inicializa zerado para garantir que o gráfico do front-end não quebre se o cara não tiver tier "F"
         tier_dict = {"S": 0, "A": 0, "B": 0, "C": 0, "D": 0, "F": 0}
@@ -33,13 +58,18 @@ class StatsService:
                 tier_dict[tier] = count
 
         # Top Artistas Mais Avaliados
-        top_artists_query = db.session.query(
+        top_artists_base = db.session.query(
             AlbumReview.artist_name, 
             func.count(AlbumReview.id)
-        ).filter(AlbumReview.user_id == user_id)\
-        .group_by(AlbumReview.artist_name)\
-        .order_by(desc(func.count(AlbumReview.id)))\
-        .limit(5).all() # Pega só o Top 5
+        ).filter(AlbumReview.user_id == user_id)
+        
+        if is_public_view:
+            top_artists_base = top_artists_base.filter(AlbumReview.is_private == False)
+            
+        top_artists_query = top_artists_base\
+            .group_by(AlbumReview.artist_name)\
+            .order_by(desc(func.count(AlbumReview.id)))\
+            .limit(5).all()
 
         top_artists = [{"name": artist, "count": count} for artist, count in top_artists_query]
 
@@ -84,7 +114,7 @@ class StatsService:
                 })
         
         return recommendations
-
+    
     @staticmethod
     def calculate_and_update_streak(user_id):
         """

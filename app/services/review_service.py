@@ -15,6 +15,7 @@ class ReviewService:
         tracks_data = payload.get('tracks', [])
         review_text = payload.get('review_text')
         listened_date_str = payload.get('listened_date')
+        is_private = payload.get('is_private', False)
         
         if listened_date_str:
             try:
@@ -29,8 +30,15 @@ class ReviewService:
         spotify_id = album_data.get('id')
         final_album_name = album_data.get('name')
         final_artist_name = album_data.get('artist')
+
+        artist_id = album_data.get('artist_id') 
+        final_genres = []
+        if artist_id:
+            from app.services.spotify_service import SpotifyService
+            final_genres = SpotifyService.get_artist_genres(user, artist_id)
+
         final_cover_url = album_data.get('cover')
-        final_album_id = None
+        final_album_id = spotify_id if spotify_id else f"custom:{uuid.uuid4()}"
 
         if spotify_id:
             final_album_id = spotify_id
@@ -45,7 +53,9 @@ class ReviewService:
             artist_name=final_artist_name,
             cover_url=final_cover_url,
             review_text=review_text,
-            created_at=final_created_at
+            created_at=final_created_at,
+            is_private=is_private,
+            artist_genres=final_genres
         )
         
         db.session.add(review)
@@ -100,6 +110,8 @@ class ReviewService:
         # Atualiza o texto se foi enviado
         if 'review_text' in payload:
             review.review_text = payload['review_text']
+
+        review.is_private = payload.get('is_private', review.is_private)
 
         # Atualiza as faixas se foram enviadas
         tracks_data = payload.get('tracks', [])
@@ -170,7 +182,7 @@ class ReviewService:
         return True
 
     @staticmethod
-    def get_calendar_data(user_id, month, year):
+    def get_calendar_data(user_id, month, year, request_user_id=None):
         """
         Retorna reviews agrupadas por dia para o calendário.
         """
@@ -179,6 +191,9 @@ class ReviewService:
             extract('month', AlbumReview.created_at) == month,
             extract('year', AlbumReview.created_at) == year
         ).order_by(AlbumReview.created_at).all()
+
+        if str(request_user_id) != str(user_id):
+            query = query.filter(AlbumReview.is_private == False)
         
         calendar = {}
         for review in reviews:
@@ -191,11 +206,14 @@ class ReviewService:
         return calendar
 
     @staticmethod
-    def get_reviews(user_id, page=1, per_page=10, filters=None):
+    def get_reviews(user_id, page=1, per_page=10, filters=None, request_user_id=None):
         """
         Retorna reviews paginadas para o histórico com filtros opcionais.
         """
         query = AlbumReview.query.filter_by(user_id=user_id)
+
+        if str(request_user_id) != str(user_id):
+            query = query.filter_by(is_private=False)
         
         if filters:
             if filters.get('tier'):

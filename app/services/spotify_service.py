@@ -159,3 +159,19 @@ class SpotifyService:
         sp = SpotifyService.get_client(user)
         results = sp.current_user_top_artists(limit=limit, time_range=time_range)
         return results['items']
+
+    @staticmethod
+    def get_artist_genres(user, artist_id: str) -> list:
+        """
+        Busca os gêneros musicais de um artista no Spotify.
+        """
+        if not artist_id:
+            return []
+            
+        sp = SpotifyService.get_client(user)
+        try:
+            artist_info = sp.artist(artist_id)
+            return artist_info.get('genres', [])
+        except Exception as e:
+            print(f"Erro ao buscar gêneros: {e}")
+            return []

@@ -115,7 +115,7 @@ def get_my_platinums(current_user):
 @require_auth
 def get_my_stats(current_user):
     """Retorna as estatísticas para renderizar seus próprios gráficos."""
-    raw_stats = StatsService.get_user_stats(current_user.id)
+    raw_stats = StatsService.get_user_stats(current_user.id, request_user_id=current_user.id)
     
     # Valida e limpa
     data = UserStatsOutput.model_validate(raw_stats).model_dump()

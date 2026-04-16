@@ -62,7 +62,8 @@ def get_user_reviews(target_user_id):
         user_id=target_user_id,
         page=page,
         per_page=per_page,
-        filters=filters
+        filters=filters,
+        request_user_id=None
     )
 
     items_pydantic = [ReviewSummary.model_validate(item) for item in pagination.items]
@@ -90,7 +91,7 @@ def get_user_calendar(target_user_id):
     except (TypeError, ValueError):
         raise BusinessRuleError("Parâmetros 'month' e 'year' inválidos. Use números.")
 
-    calendar_data = ReviewService.get_calendar_data(target_user_id, month, year)
+    calendar_data = ReviewService.get_calendar_data(target_user_id, month, year, request_user_id=None)
 
     calendar_json = {}
     for day, review_list in calendar_data.items():
