@@ -30,10 +30,16 @@ def get_review_details(review_id):
     """
     Busca review pelo UUID.
     """
+    from flask_jwt_extended import get_jwt_identity
+    current_user_id = get_jwt_identity() 
+
     review = AlbumReview.query.get(review_id)
     if not review:
         raise ResourceNotFoundError("Review")
     
-    return success_response(
-        data=ReviewFull.model_validate(review).model_dump()
-    )
+    # Se for privada e quem tá pedindo não for o dono, bloqueia!
+    if review.is_private and str(review.user_id) != str(current_user_id):
+        from app.exceptions import APIError
+        raise APIError("Esta review é privada.", 403)
+    
+    return success_response(data=ReviewFull.model_validate(review).model_dump())
