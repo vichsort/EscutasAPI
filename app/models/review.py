@@ -15,6 +15,8 @@ class AlbumReview(db.Model):
     album_name = db.Column(db.String(255), nullable=False)
     artist_name = db.Column(db.String(255), nullable=False)
     cover_url = db.Column(db.String(500), nullable=True)
+    is_private = db.Column(db.Boolean, default=False)
+    artist_genres = db.Column(db.JSON, nullable=True, default=list)
     
     # Conteúdo da Review
     review_text = db.Column(db.Text)

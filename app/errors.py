@@ -14,7 +14,16 @@ def register_error_handlers(app):
 
     @app.errorhandler(PydanticValidationError)
     def handle_pydantic_error(e):
-        custom_error = DataValidationError(errors=e.errors())
+        # Filtra apenas os dados seguros (strings/listas) para o JSON não engasgar
+        safe_errors = []
+        for err in e.errors():
+            safe_errors.append({
+                "loc": err.get("loc"),
+                "msg": err.get("msg"),
+                "type": err.get("type")
+            })
+            
+        custom_error = DataValidationError(errors=safe_errors)
         response = jsonify(custom_error.to_dict())
         response.status_code = custom_error.status_code
         return response

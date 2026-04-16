@@ -1,3 +1,4 @@
+from app.extensions import db
 from functools import wraps
 from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
 from app.models import User
@@ -14,7 +15,7 @@ def require_auth(f):
         try:
             verify_jwt_in_request()
             user_id = get_jwt_identity()
-            current_user = User.query.get(user_id)
+            current_user = db.session.get(User, user_id)
             
             if not current_user:
                 raise APIError("Usuário não encontrado.", 401)
