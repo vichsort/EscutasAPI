@@ -4,7 +4,7 @@ from typing import List, Optional
 from collections import Counter
 from flask import current_app
 from spotipy import Spotify
-from spotipy.oauth2 import SpotifyOAuth
+from spotipy.oauth2 import SpotifyOAuth, SpotifyClientCredentials
 from spotipy.cache_handler import MemoryCacheHandler
 from spotipy.exceptions import SpotifyException
 from app.extensions import db
@@ -34,12 +34,22 @@ class SpotifyService:
         )
 
     @staticmethod
-    def get_client(user) -> Spotify:
+    def get_client(user=None) -> Spotify:
         """
-        Retorna cliente Spotify. Se o token não existir ou a renovação falhar,
-        dispara AuthenticationError (401).
+        Retorna cliente Spotify. 
+        Se 'user' for None, usa o modo genérico da aplicação (Client Credentials Flow).
+        Se 'user' for fornecido, usa o token dele e renova se necessário.
         """
-        if not user or not user.access_token or not user.refresh_token:
+        # Modo Genérico (Usado pelo BlogService, buscas deslogadas, etc)
+        if not user:
+            client_credentials_manager = SpotifyClientCredentials(
+                client_id=os.getenv("SPOTIFY_CLIENT_ID"),
+                client_secret=os.getenv("SPOTIFY_CLIENT_SECRET")
+            )
+            return Spotify(client_credentials_manager=client_credentials_manager)
+
+        # Modo Usuário Logado
+        if not user.access_token or not user.refresh_token:
             raise AuthenticationError("Usuário não possui credenciais do Spotify válidas.")
 
         expires_at = user.token_expires_at or 0
@@ -56,7 +66,7 @@ class SpotifyService:
                 raise AuthenticationError("Sessão do Spotify expirou e não pôde ser renovada.")
 
         return Spotify(auth=user.access_token)
-
+    
     @staticmethod
     def _extract_album_object(track_data) -> Optional[AlbumBase]:
         """

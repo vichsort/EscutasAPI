@@ -134,3 +134,19 @@ class BlogService:
             query = query.filter_by(status='PUBLISHED')
             
         return query.paginate(page=page, per_page=per_page, error_out=False)
+
+    @staticmethod
+    def delete_post(post_id, user_id):
+        """Deleta um post (apenas o autor pode)"""
+        post = BlogPost.query.get(post_id)
+        
+        if not post:
+            raise ResourceNotFoundError("Post")
+            
+        # Verifica permissão
+        if str(post.user_id) != str(user_id):
+            raise AuthorizationError("Você não tem permissão para apagar este post.")
+            
+        db.session.delete(post)
+        db.session.commit()
+        return True
