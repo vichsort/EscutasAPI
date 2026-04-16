@@ -1,4 +1,5 @@
 import pytest
+from flask_jwt_extended import create_access_token
 from unittest.mock import patch, MagicMock
 from app import create_app
 from app.extensions import db
@@ -45,13 +46,18 @@ def user_mock(test_db):
     return user
 
 @pytest.fixture(scope='function')
-def auth_client(client, user_mock):
+def auth_client(client, app, user_mock):
     """
-    Cliente que simula um utilizador já autenticado.
-    Configura a sessão do Flask com o ID do user_mock.
+    Cliente que simula um utilizador autenticado gerando um JWT real.
     """
-    with client.session_transaction() as sess:
-        sess['user_id'] = str(user_mock.id)
+    with app.app_context():
+        # Cria um token criptografado de verdade usando a SECRET_KEY de teste.
+        # O identity precisa ser o ID do mock em string, pois é o que o get_jwt_identity() vai ler!
+        valid_token = create_access_token(identity=str(user_mock.id))
+
+    # Injeta o Bearer Token VERDADEIRO nos Headers do cliente de teste
+    client.environ_base['HTTP_AUTHORIZATION'] = f"Bearer {valid_token}"
+    
     return client
 
 @pytest.fixture(scope='function', autouse=True)
