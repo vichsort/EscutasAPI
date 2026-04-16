@@ -138,9 +138,9 @@ class StatsService:
         Calcula a streak atual e a maior streak da história do usuário.
         Diferente de um simples contador, ele analisa o calendário de reviews.
         """
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
-            return
+            return 0
 
         # Pega todas as datas únicas em que o usuário fez reviews (ordenadas da mais nova para a mais antiga)
         # Usamos cast para DATE para ignorar as horas
@@ -157,7 +157,7 @@ class StatsService:
         if not review_dates:
             user.current_streak = 0
             db.session.commit()
-            return
+            return 0
 
         today = date.today()
         yesterday = today - timedelta(days=1)
