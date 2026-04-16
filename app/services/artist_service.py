@@ -15,6 +15,9 @@ class ArtistService:
         """
         sp = SpotifyService.get_client(user)
 
+        if not artist_id: 
+            raise ResourceNotFoundError("Artista")
+
         try:
             # Pega os dados básicos do artista
             artist_info = sp.artist(artist_id)
