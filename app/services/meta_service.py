@@ -1,5 +1,5 @@
 from app.extensions import db
-from app.models import MonthlyMeta, AlbumReview, UserMonthlyMeta
+from app.models import MonthlyMeta, AlbumReview
 from app.exceptions import BusinessRuleError
 from app.utils import generate_monthly_title
 
@@ -64,12 +64,12 @@ class MetaService:
         new_title = generate_monthly_title(all_genres)
 
         # Guarda ou atualiza na tabela Meta
-        meta = UserMonthlyMeta.query.filter_by(
+        meta = MonthlyMeta.query.filter_by(
             user_id=user_id, month=month, year=year
         ).first()
 
         if not meta:
-            meta = UserMonthlyMeta(user_id=user_id, month=month, year=year)
+            meta = MonthlyMeta(user_id=user_id, month=month, year=year)
             db.session.add(meta)
 
         meta.title = new_title
