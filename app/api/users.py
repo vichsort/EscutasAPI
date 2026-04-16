@@ -1,8 +1,10 @@
 from flask import Blueprint, request
-from app.utils import success_response, require_auth, paginated_response
+from pydantic import ValidationError
+from app.utils import success_response, require_auth, paginated_response, resolve_target_user 
 from app.models import UserPlatinum
 from app.services import UserService, ReviewService, StatsService, MetaService
-from app.schemas import ReviewSummary, PlatinumTrophyOutput, UserStatsOutput
+from app.schemas import PlatinumTrophyOutput, UserStatsOutput
+from app.schemas.review import CalendarQuery, ReviewHistoryQuery
 from app.exceptions import BusinessRuleError, ResourceNotFoundError
 
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')
@@ -10,10 +12,7 @@ users_bp = Blueprint('users', __name__, url_prefix='/api/users')
 @users_bp.route('/search', methods=['GET'])
 @require_auth
 def search_users(current_user):
-    """
-    Busca usuários.
-    Uso: GET /api/users/search?q=joao
-    """
+    """Busca usuários por nome ou ID do Spotify."""
     query = request.args.get('q')
     
     if not query or len(query) < 2:
@@ -27,132 +26,102 @@ def search_users(current_user):
         message=f"Encontrados {len(results)} usuários."
     )
 
-@users_bp.route('/<user_uuid>', methods=['GET'])
+@users_bp.route('/<string:user_param>', methods=['GET'])
 @require_auth
-def get_profile(current_user, user_uuid):
-    """
-    Pega dados públicos de um perfil.
-    """
-    user = UserService.get_user_profile(user_uuid)
+def get_profile(current_user, user_param):
+    """Pega dados públicos de um perfil ou do próprio usuário ('me')."""
+    target_id, _ = resolve_target_user(user_param, current_user)
     
+    user = UserService.get_user_profile(target_id)
     if not user:
         raise ResourceNotFoundError("Usuário")
         
     return success_response(data=user.model_dump())
 
-@users_bp.route('/<uuid:target_user_id>/reviews', methods=['GET'])
-def get_user_reviews(target_user_id):
-    """
-    Rota SOCIAL: Permite ver o histórico de reviews de outro usuário.
-    """
-    target_user = UserService.get_user_profile(str(target_user_id))
-    if not target_user:
-        raise ResourceNotFoundError("Usuário")
+@users_bp.route('/<string:user_param>/reviews', methods=['GET'])
+@require_auth
+def get_user_reviews(current_user, user_param):
+    """Histórico de reviews (Paginação e Filtros)."""
+    target_id, req_user_id = resolve_target_user(user_param, current_user)
 
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    
-    filters = {
-        'start_date': request.args.get('start_date'),
-        'end_date': request.args.get('end_date'),
-        'album_id': request.args.get('album_id')
-    }
-    
+    # O Pydantic engole o request.args e valida tudo! Adeus try/except.
+    try:
+        query_data = ReviewHistoryQuery.model_validate(request.args.to_dict())
+    except ValidationError as e:
+        raise BusinessRuleError(f"Parâmetros de busca inválidos.")
+
+    # Passamos os filtros limpinhos pro Service
     pagination = ReviewService.get_reviews(
-        user_id=target_user_id,
-        page=page,
-        per_page=per_page,
-        filters=filters,
-        request_user_id=None
+        user_id=target_id,
+        page=query_data.page,
+        per_page=query_data.per_page,
+        filters=query_data.model_dump(exclude={'page', 'per_page'}, exclude_none=True),
+        request_user_id=req_user_id
     )
-
-    items_pydantic = [ReviewSummary.model_validate(item) for item in pagination.items]
-    pagination.items = [item.model_dump() for item in items_pydantic]
     
-    return paginated_response(
-        pagination, 
-        message=f"Histórico de {target_user.display_name} recuperado."
-    )
+    # O Service já formatou os itens, o Controller só entrega!
+    return paginated_response(pagination, message="Histórico recuperado com sucesso.")
 
-@users_bp.route('/<uuid:target_user_id>/calendar', methods=['GET'])
-def get_user_calendar(target_user_id):
-    """
-    Rota SOCIAL: Permite ver o calendário de outro usuário.
-    """
-    target_user = UserService.get_user_profile(str(target_user_id))
-    if not target_user:
-        raise ResourceNotFoundError("Usuário")
+@users_bp.route('/<string:user_param>/calendar', methods=['GET'])
+@require_auth
+def get_user_calendar(current_user, user_param):
+    """Retorna o calendário de reviews."""
+    target_id, req_user_id = resolve_target_user(user_param, current_user)
 
     try:
-        month = int(request.args.get('month'))
-        year = int(request.args.get('year'))
-        if not (1 <= month <= 12):
-            raise ValueError
-    except (TypeError, ValueError):
-        raise BusinessRuleError("Parâmetros 'month' e 'year' inválidos. Use números.")
+        query_data = CalendarQuery.model_validate(request.args.to_dict())
+    except ValidationError:
+        raise BusinessRuleError("Parâmetros 'month' e 'year' são obrigatórios e devem ser válidos.")
 
-    calendar_data = ReviewService.get_calendar_data(target_user_id, month, year, request_user_id=None)
-
-    calendar_json = {}
-    for day, review_list in calendar_data.items():
-        calendar_json[day] = [ReviewSummary.model_validate(r).model_dump() for r in review_list]
-    
-    return success_response(
-        data=calendar_json,
-        message=f"Calendário de {target_user.display_name} recuperado."
+    # O Service devolve o JSON perfeitamente montado
+    calendar_json = ReviewService.get_calendar_data(
+        user_id=target_id, 
+        month=query_data.month, 
+        year=query_data.year, 
+        request_user_id=req_user_id
     )
-
-@users_bp.route('/<uuid:target_user_id>/platinums', methods=['GET'])
-def get_user_platinums(target_user_id):
-    """Retorna todas as medalhas de platina conquistadas por um usuário."""
-    target_user = UserService.get_user_profile(str(target_user_id))
-    if not target_user:
-        raise ResourceNotFoundError("Usuário")
-
-    trophies = UserPlatinum.query.filter_by(user_id=target_user_id).order_by(UserPlatinum.achieved_at.desc()).all()
     
+    return success_response(data=calendar_json)
+
+@users_bp.route('/<string:user_param>/platinums', methods=['GET'])
+@require_auth
+def get_user_platinums(current_user, user_param):
+    """Retorna as medalhas de platina do usuário."""
+    target_id, _ = resolve_target_user(user_param, current_user)
+
+    trophies = UserPlatinum.query.filter_by(user_id=target_id).order_by(UserPlatinum.achieved_at.desc()).all()
     data = [PlatinumTrophyOutput.model_validate(t).model_dump() for t in trophies]
     
     return success_response(
         data=data,
-        message=f"{target_user.display_name} possui {len(data)} platinas."
+        message=f"Foram encontradas {len(data)} platinas."
     )
 
-@users_bp.route('/<uuid:target_user_id>/stats', methods=['GET'])
-def get_user_stats(target_user_id):
-    """Retorna as estatísticas do perfil público de um usuário."""
-    target_user = UserService.get_user_profile(str(target_user_id))
-    if not target_user:
-        raise ResourceNotFoundError("Usuário")
+@users_bp.route('/<string:user_param>/stats', methods=['GET'])
+@require_auth
+def get_user_stats(current_user, user_param):
+    """Retorna as estatísticas para os gráficos de perfil."""
+    target_id, req_user_id = resolve_target_user(user_param, current_user)
 
-    raw_stats = StatsService.get_user_stats(target_user_id, request_user_id=None)
+    raw_stats = StatsService.get_user_stats(target_id, request_user_id=req_user_id)
     data = UserStatsOutput.model_validate(raw_stats).model_dump()
     
-    return success_response(
-        data=data,
-        message=f"Estatísticas de {target_user.display_name} calculadas."
-    )
+    return success_response(data=data, message="Estatísticas calculadas com sucesso.")
 
-@users_bp.route('/<uuid:target_user_id>/monthly-title', methods=['GET'])
+@users_bp.route('/<string:user_param>/monthly-title', methods=['GET'])
 @require_auth
-def get_monthly_title(target_user_id, current_user):
-    """
-    Busca o título do mês do próprio usuário.
-    Uso: GET /api/users/monthly-title?month=5&year=2026
-    """
-    try:
-        month = int(request.args.get('month'))
-        year = int(request.args.get('year'))
-    except (TypeError, ValueError):
-        raise BusinessRuleError("Parâmetros 'month' e 'year' são inválidos ou não foram enviados.")
+def get_monthly_title(current_user, user_param):
+    """Busca o título do mês do usuário."""
+    target_id, _ = resolve_target_user(user_param, current_user)
 
-    title = MetaService.get_monthly_title(current_user.id, month, year)
+    try:
+        query_data = CalendarQuery.model_validate(request.args.to_dict())
+    except ValidationError:
+        raise BusinessRuleError("Parâmetros 'month' e 'year' são inválidos.")
+
+    title = MetaService.get_monthly_title(target_id, query_data.month, query_data.year)
     
     return success_response(
-        data={
-            "month": month, 
-            "year": year, 
-            "title": title
-        },
+        data={"month": query_data.month, "year": query_data.year, "title": title},
         message="Título recuperado." if title else "Nenhum título para este mês."
     )

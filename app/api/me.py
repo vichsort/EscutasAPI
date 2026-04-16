@@ -1,8 +1,6 @@
 from flask import Blueprint, request
-from app.utils import success_response, paginated_response, require_auth
-from app.services import ReviewService, SpotifyService, StatsService, MetaService
-from app.schemas import ReviewSummary, PlatinumTrophyOutput, UserStatsOutput
-from app.models import UserPlatinum
+from app.utils import success_response, require_auth
+from app.services import SpotifyService, MetaService
 from app.exceptions import BusinessRuleError
 
 me_bp = Blueprint('me', __name__, url_prefix='/api/me')
@@ -16,61 +14,6 @@ def get_my_profile(current_user):
     return success_response(
         data=current_user.to_dict(),
         message="Perfil recuperado com sucesso."
-    )
-
-@me_bp.route('/reviews', methods=['GET'])
-@require_auth
-def get_my_reviews(current_user):
-    """
-    Retorna o histórico de reviews do usuário logado (paginado e filtrado).
-    """
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    
-    filters = {
-        'start_date': request.args.get('start_date'),
-        'end_date': request.args.get('end_date'),
-        'album_id': request.args.get('album_id'),
-        'tier': request.args.get('tier'),
-        'search': request.args.get('search')
-    }
-    
-    pagination = ReviewService.get_reviews(
-        user_id=current_user.id,
-        page=page,
-        per_page=per_page,
-        filters=filters,
-        request_user_id=current_user.id
-    )
-
-    items_pydantic = [ReviewSummary.model_validate(item) for item in pagination.items]
-    pagination.items = [item.model_dump() for item in items_pydantic]
-    
-    return paginated_response(pagination, message="Seu histórico recuperado com sucesso.")
-
-@me_bp.route('/calendar', methods=['GET'])
-@require_auth
-def get_my_calendar(current_user):
-    """
-    Retorna dados do calendário do usuário logado.
-    """
-    try:
-        month = int(request.args.get('month'))
-        year = int(request.args.get('year'))
-        if not (1 <= month <= 12):
-            raise ValueError
-    except (TypeError, ValueError):
-        raise BusinessRuleError("Parâmetros 'month' e 'year' inválidos. Use números.")
-
-    calendar_data = ReviewService.get_calendar_data(current_user.id, month, year, request_user_id=current_user.id)
-
-    calendar_json = {}
-    for day, review_list in calendar_data.items():
-        calendar_json[day] = [ReviewSummary.model_validate(r).model_dump() for r in review_list]
-    
-    return success_response(
-        data=calendar_json,
-        message=f"Seu calendário de {month}/{year} recuperado."
     )
 
 @me_bp.route('/now-playing', methods=['GET'])
@@ -99,33 +42,6 @@ def get_suggestions(current_user):
         message="Sugestões recuperadas."
     )
 
-@me_bp.route('/platinums', methods=['GET'])
-@require_auth
-def get_my_platinums(current_user):
-    """Retorna todas as medalhas de platina conquistadas por você."""
-    trophies = UserPlatinum.query.filter_by(user_id=current_user.id).order_by(UserPlatinum.achieved_at.desc()).all()
-    
-    data = [PlatinumTrophyOutput.model_validate(t).model_dump() for t in trophies]
-    
-    return success_response(
-        data=data,
-        message=f"Você possui {len(data)} platinas."
-    )
-
-@me_bp.route('/stats', methods=['GET'])
-@require_auth
-def get_my_stats(current_user):
-    """Retorna as estatísticas para renderizar seus próprios gráficos."""
-    raw_stats = StatsService.get_user_stats(current_user.id, request_user_id=current_user.id)
-    
-    # Valida e limpa
-    data = UserStatsOutput.model_validate(raw_stats).model_dump()
-    
-    return success_response(
-        data=data,
-        message="Suas estatísticas foram calculadas com sucesso."
-    )
-
 @me_bp.route('/monthly-title', methods=['POST'])
 @require_auth
 def set_monthly_title(current_user):
@@ -147,28 +63,4 @@ def set_monthly_title(current_user):
     return success_response(
         data=meta.to_dict(),
         message="Título do mês atualizado com sucesso!"
-    )
-
-@me_bp.route('/monthly-title', methods=['GET'])
-@require_auth
-def get_monthly_title(current_user):
-    """
-    Busca o título do mês do próprio usuário.
-    Uso: GET /api/me/monthly-title?month=5&year=2026
-    """
-    try:
-        month = int(request.args.get('month'))
-        year = int(request.args.get('year'))
-    except (TypeError, ValueError):
-        raise BusinessRuleError("Parâmetros 'month' e 'year' são inválidos ou não foram enviados.")
-
-    title = MetaService.get_monthly_title(current_user.id, month, year)
-    
-    return success_response(
-        data={
-            "month": month, 
-            "year": year, 
-            "title": title
-        },
-        message="Título recuperado." if title else "Nenhum título para este mês."
     )

@@ -1,6 +1,5 @@
 import uuid
-from datetime import datetime, timezone
-from sqlalchemy import extract
+from app.schemas import ReviewSummary
 from app.extensions import db
 from app.models import AlbumReview, TrackReview
 from app.exceptions import BusinessRuleError, ResourceNotFoundError
@@ -138,20 +137,21 @@ class ReviewService:
 
     @staticmethod
     def get_calendar_data(user_id, month, year, request_user_id=None):
-        """Retorna reviews agrupadas por dia para o calendário."""
+        """Retorna reviews agrupadas por dia para o calendário (Já formatadas para JSON)."""
+        from sqlalchemy import extract
         
-        # Constrói a Base da Busca (sem executar ainda)
+        # Constrói a Base da Busca
         query = AlbumReview.query.filter(
             AlbumReview.user_id == user_id,
             extract('month', AlbumReview.created_at) == month,
             extract('year', AlbumReview.created_at) == year
         )
 
-        # Aplica o Filtro de Privacidade (A Parede de Vidro) se for um visitante
+        # Aplica o Filtro de Privacidade se for um visitante
         if str(request_user_id) != str(user_id):
             query = query.filter(AlbumReview.is_private == False)
         
-        # executa a busca no banco
+        # Executa a busca
         reviews = query.order_by(AlbumReview.created_at).all()
         
         calendar = {}
@@ -160,15 +160,13 @@ class ReviewService:
             if day not in calendar:
                 calendar[day] = []
             
-            calendar[day].append(review)
+            calendar[day].append(ReviewSummary.model_validate(review).model_dump())
             
         return calendar
 
     @staticmethod
     def get_reviews(user_id, page=1, per_page=10, filters=None, request_user_id=None):
-        """
-        Retorna reviews paginadas para o histórico com filtros opcionais.
-        """
+        """Retorna reviews paginadas para o histórico com filtros opcionais (Já formatadas)."""
         query = AlbumReview.query.filter_by(user_id=user_id)
 
         if str(request_user_id) != str(user_id):
@@ -186,5 +184,8 @@ class ReviewService:
 
         pagination = query.order_by(AlbumReview.created_at.desc())\
             .paginate(page=page, per_page=per_page, error_out=False)
+            
+        items_pydantic = [ReviewSummary.model_validate(item) for item in pagination.items]
+        pagination.items = [item.model_dump() for item in items_pydantic]
             
         return pagination

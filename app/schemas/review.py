@@ -89,3 +89,18 @@ class ReviewUpdate(BaseModel):
     review_text: Optional[str] = None
     is_private: Optional[bool] = None
     tracks: Optional[List[TrackUpdate]] = None
+
+class CalendarQuery(BaseModel):
+    """Valida os parâmetros da URL para a rota do Calendário"""
+    month: int = Field(..., ge=1, le=12, description="Mês de 1 a 12")
+    year: int = Field(..., ge=1900, le=2100, description="Ano com 4 dígitos")
+
+class ReviewHistoryQuery(BaseModel):
+    """Valida os parâmetros da URL para o histórico de reviews"""
+    page: int = Field(default=1, ge=1)
+    per_page: int = Field(default=20, ge=1, le=100)
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    album_id: Optional[str] = None
+    tier: Optional[str] = None
+    search: Optional[str] = None
