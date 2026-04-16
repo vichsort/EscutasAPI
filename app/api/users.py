@@ -125,7 +125,7 @@ def get_user_stats(target_user_id):
     if not target_user:
         raise ResourceNotFoundError("Usuário")
 
-    raw_stats = StatsService.get_user_stats(target_user_id)
+    raw_stats = StatsService.get_user_stats(target_user_id, request_user_id=None)
     data = UserStatsOutput.model_validate(raw_stats).model_dump()
     
     return success_response(
@@ -138,7 +138,7 @@ def get_user_stats(target_user_id):
 def get_monthly_title(target_user_id, current_user):
     """
     Busca o título do mês do próprio usuário.
-    Uso: GET /api/me/monthly-title?month=5&year=2026
+    Uso: GET /api/users/monthly-title?month=5&year=2026
     """
     try:
         month = int(request.args.get('month'))
@@ -146,7 +146,7 @@ def get_monthly_title(target_user_id, current_user):
     except (TypeError, ValueError):
         raise BusinessRuleError("Parâmetros 'month' e 'year' são inválidos ou não foram enviados.")
 
-    title = MetaService.get_monthly_title(target_user_id, current_user.id, month, year)
+    title = MetaService.get_monthly_title(current_user.id, month, year)
     
     return success_response(
         data={

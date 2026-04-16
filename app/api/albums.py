@@ -49,7 +49,7 @@ def curate_album(current_user, spotify_id):
     Registra o voto do usuário sobre o status de Platina do álbum.
     Body: {"is_canonical": true/false}
     """
-    payload = CurationVoteInput.model_validate(request.json)
+    payload = CurationVoteInput.model_validate(request.json or {})
     
     CurationService.register_vote(
         user_id=current_user.id,
