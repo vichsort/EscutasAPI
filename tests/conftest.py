@@ -37,7 +37,6 @@ def user_mock(test_db):
     user = User(
         spotify_id="tracie_test",
         display_name="Tracie Tester",
-        email="tracie@test.com",
         access_token="fake_token",
         refresh_token="fake_refresh"
     )
