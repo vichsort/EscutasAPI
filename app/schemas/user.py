@@ -22,6 +22,8 @@ class StatsOverview(BaseModel):
     total_reviews: int
     total_platinums: int
     average_score: float
+    current_streak: int
+    longest_streak: int
 
 class TopArtistStat(BaseModel):
     name: str

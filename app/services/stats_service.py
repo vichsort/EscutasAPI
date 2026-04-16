@@ -25,7 +25,7 @@ class StatsService:
         total_plats = db.session.query(UserPlatinum).filter(UserPlatinum.user_id == user_id).count()
 
         # Overview (A média geral de notas)
-        avg_query = db.session.query(func.avg(AlbumReview.score)).filter(AlbumReview.user_id == user_id)
+        avg_query = db.session.query(func.avg(AlbumReview.average_score)).filter(AlbumReview.user_id == user_id)
         if is_public_view:
             avg_query = avg_query.filter(AlbumReview.is_private == False)
         
@@ -64,12 +64,15 @@ class StatsService:
             .limit(5).all()
 
         top_artists = [{"name": artist, "count": count} for artist, count in top_artists_query]
+        user = db.session.get(User, user_id)
 
         return {
             "overview": {
                 "total_reviews": total_reviews,
                 "total_platinums": total_plats,
-                "average_score": avg_score
+                "average_score": avg_score,
+                "current_streak": user.current_streak,
+                "longest_streak": user.longest_streak
             },
             "tier_distribution": tier_dict,
             "top_artists": top_artists
