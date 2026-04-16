@@ -3,6 +3,14 @@
 # para a comunidade alterar o status de um álbum na Platina.
 CURATION_THRESHOLD = 1
 
+# Quantidade de avaliações mínima que precisa ser passada (ou igual) para que ele seja 
+# considerado parte do hall da fama representando um album muito valioso em questão
+# da sua avaliação.
+HALL_OF_FAME_MIN_REVIEWS = 3
+
+# Quantidade de dias máximo em que um dia pode ser considerado tendência (está em alta). 
+TRENDING_DAYS_LIMIT = 7
+
 # Regras para classificar os tiers, calculada para cada review e armazenada para
 # a tier list automática. Se baseia na nota de 0 a 10 e atribui essas classes 
 # para cada álbum, que podem ser usadas para criar uma tier list automática. Ela
@@ -65,3 +73,20 @@ USER_RANKS = {
         'LEVEL_1': {'min': 3, 'title': "Ouvinte Dedicado"}
     }
 }
+
+MONTH_TITLE_PRESETS = [
+    "A Fase do {genre}",
+    "Mês do {genre}",
+    "Imersão {genre}",
+    "Imersão no {genre}",
+    "Imersão em {genre}",
+    "Vibe {genre}",
+    "A Era {genre}",
+    "A Era do {genre}",
+    "Onda {genre}",
+    "Explorando o {genre}",
+    "Dias de {genre}",
+    "Só {genre}",
+    "Intensivo de {genre}"
+    "{genre} on fire"
+]

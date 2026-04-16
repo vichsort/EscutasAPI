@@ -3,6 +3,7 @@ from .artist_service import ArtistService
 from .auth_service import AuthService
 from .blog_service import BlogService
 from .curation_service import CurationService
+from .explore_service import ExploreService
 from .interaction_service import InteractionService
 from .meta_service import MetaService
 from .review_service import ReviewService
@@ -16,6 +17,7 @@ __all__ = [
     'AuthService',
     'BlogService',
     'CurationService',
+    'ExploreService',
     'InteractionService',
     'MetaService',
     'ReviewService',

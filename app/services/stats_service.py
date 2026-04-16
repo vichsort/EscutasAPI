@@ -78,33 +78,58 @@ class StatsService:
     @staticmethod
     def get_personalized_recommendations(user):
         """
-        Pega o artista top 1 do usuário e sugere álbuns que ele ainda não avaliou.
+        Sugestões baseadas em:
+        1. Progresso de Platina (Artistas que voce escuta)
+        2. A Bolha (O que a comunidade deu Tier S e voce n ouviu)
         """
-        # Pega os top artistas (pegamos os 3 primeiros pra ter margem)
-        top_artists = SpotifyService.get_user_top_artists(user, limit=3)
-        
-        if not top_artists:
-            return []
+        recommendations = {
+            "platinum_focus": [],
+            "community_bubble": []
+        }
 
-        recommendations = []
-        
+        # Platinum Focus
+        top_artists = SpotifyService.get_user_top_artists(user, limit=3)
         for artist in top_artists:
-            # Usa o "Motor de Platina" para ver o que falta
             progress = ArtistService.get_platinum_progress(user, artist['id'])
-            
-            # Filtra apenas os álbuns que NÃO estão completados
-            unheard_albums = [
-                album for album in progress['discography'] 
-                if not album['is_completed']
-            ]
-            
-            if unheard_albums:
-                recommendations.append({
+            unheard = [a for a in progress['discography'] if not a['is_completed']]
+            if unheard:
+                recommendations["platinum_focus"].append({
                     "artist_name": artist['name'],
-                    "artist_image": artist['images'][0]['url'] if artist['images'] else None,
-                    "suggested_albums": unheard_albums[:3] # Sugere até 3 por artista
+                    "suggested_albums": unheard[:2]
                 })
-        
+
+        # A Bolha da Comunidade - Tier S que tu não tens
+        # Subquery: IDs dos álbuns que o utilizador JÁ avaliou
+        reviewed_ids = db.session.query(AlbumReview.spotify_album_id).filter(
+            AlbumReview.user_id == user.id
+        ).subquery()
+
+        # Busca álbuns Tier S na comunidade que não estão na subquery
+        bubble_query = db.session.query(
+            AlbumReview.spotify_album_id,
+            AlbumReview.album_name,
+            AlbumReview.artist_name,
+            AlbumReview.cover_url,
+            func.count(AlbumReview.id).label('total_votes')
+        ).filter(
+            AlbumReview.tier == 'S',
+            AlbumReview.is_private == False,
+            AlbumReview.spotify_album_id.not_in(reviewed_ids)
+        ).group_by(
+            AlbumReview.spotify_album_id, AlbumReview.album_name, 
+            AlbumReview.artist_name, AlbumReview.cover_url
+        ).order_by(desc('total_votes')).limit(5).all()
+
+        recommendations["community_bubble"] = [
+            {
+                "id": row.spotify_album_id,
+                "name": row.album_name,
+                "artist": row.artist_name,
+                "cover_url": row.cover_url,
+                "reason": f"Aclamado por {row.total_votes} pessoas na comunidade"
+            } for row in bubble_query
+        ]
+
         return recommendations
     
     @staticmethod

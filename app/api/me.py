@@ -64,3 +64,25 @@ def set_monthly_title(current_user):
         data=meta.to_dict(),
         message="Título do mês atualizado com sucesso!"
     )
+
+@me_bp.route('/monthly-title/generate', methods=['POST'])
+@require_auth
+def generate_my_title(current_user):
+    """Gera automaticamente o título do mês baseado no gosto musical."""
+    payload = request.json or {}
+    month = payload.get('month')
+    year = payload.get('year')
+
+    if not month or not year:
+        raise BusinessRuleError("Mês e ano são necessários.")
+
+    meta = MetaService.generate_automatic_monthly_title(
+        user_id=current_user.id, 
+        month=int(month), 
+        year=int(year)
+    )
+
+    return success_response(
+        data=meta.to_dict(),
+        message=f"Título '{meta.title}' gerado com sucesso!"
+    )
