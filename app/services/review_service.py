@@ -8,42 +8,27 @@ from app.exceptions import BusinessRuleError, ResourceNotFoundError
 class ReviewService:
     @staticmethod
     def create_review(user, payload):
-        """
-        Cria uma review de álbum.
-        """
+        """Cria uma review de álbum (Os dados já chegaram mastigados e validados pelo Pydantic!)."""
         album_data = payload.get('album', {})
         tracks_data = payload.get('tracks', [])
-        review_text = payload.get('review_text')
-        listened_date_str = payload.get('listened_date')
-        is_private = payload.get('is_private', False)
         
-        if listened_date_str:
-            try:
-                # Converte dd/mm/yyyy para datetime
-                parsed_date = datetime.strptime(listened_date_str, "%d/%m/%Y")
-                final_created_at = parsed_date.replace(tzinfo=timezone.utc)
-            except ValueError:
-                raise BusinessRuleError("Formato de data inválido. Use dd/mm/yyyy.")
-        else:
-            final_created_at = datetime.now(timezone.utc)
+        # Pydantic já transformou isso num objeto datetime UTC!
+        final_created_at = payload.get('listened_date') 
 
         spotify_id = album_data.get('id')
         final_album_name = album_data.get('name')
         final_artist_name = album_data.get('artist')
+        final_cover_url = album_data.get('cover')
+        
+        # Código duplicado resolvido com um ternário elegante
+        final_album_id = spotify_id if spotify_id else f"custom:{uuid.uuid4()}"
 
+        # Busca gêneros
         artist_id = album_data.get('artist_id') 
         final_genres = []
         if artist_id:
             from app.services.spotify_service import SpotifyService
             final_genres = SpotifyService.get_artist_genres(user, artist_id)
-
-        final_cover_url = album_data.get('cover')
-        final_album_id = spotify_id if spotify_id else f"custom:{uuid.uuid4()}"
-
-        if spotify_id:
-            final_album_id = spotify_id
-        else:
-            final_album_id = f"custom:{uuid.uuid4()}"
 
         # Criando o registro pai
         review = AlbumReview(
@@ -52,43 +37,26 @@ class ReviewService:
             album_name=final_album_name,
             artist_name=final_artist_name,
             cover_url=final_cover_url,
-            review_text=review_text,
+            review_text=payload.get('review_text'),
             created_at=final_created_at,
-            is_private=is_private,
+            is_private=payload.get('is_private', False),
             artist_genres=final_genres
         )
         
         db.session.add(review)
         db.session.flush()
 
-        ignored_count = 0
-        total_tracks = len(tracks_data)
-
+        # O Pydantic já validou que as notas são floats válidos e que pelo menos 1 faixa foi avaliada!
         for track in tracks_data:
-            is_ignored = track.get('is_ignored', False)
-            score_val = None
-
-            if is_ignored:
-                ignored_count += 1
-            else:
-                try:
-                    score_val = float(track['userScore'])
-                except (ValueError, KeyError, TypeError):
-                    raise BusinessRuleError(f"Nota inválida para a faixa {track.get('name')}.")
-
             track_review = TrackReview(
                 album_review_id=review.id,
                 spotify_track_id=track.get('id'),
                 track_name=track.get('name'),
                 track_number=track.get('track_number'),
-                score=score_val,
-                is_ignored=is_ignored
+                score=track.get('userScore'), # Se for ignorada, será None automaticamente
+                is_ignored=track.get('is_ignored', False)
             )
             db.session.add(track_review)
-
-        if ignored_count == total_tracks and total_tracks > 0:
-            db.session.rollback()
-            raise BusinessRuleError("Você não pode ignorar todas as faixas do álbum. Pelo menos uma deve ser avaliada.")
 
         review.update_stats()
         db.session.commit()
@@ -98,28 +66,26 @@ class ReviewService:
 
         return review
 
-    @staticmethod
+    staticmethod
     def update_review(user, review_id, payload):
         """
-        Atualiza uma review existente (texto e notas das faixas).
+        Atualiza uma review existente.
+        Espera-se que o 'payload' já tenha sido validado por um schema (ex: ReviewUpdate).
         """
         review = AlbumReview.query.filter_by(id=review_id, user_id=user.id).first()
         if not review:
             raise ResourceNotFoundError("Review não encontrada ou você não tem permissão para alterá-la.")
 
-        # Atualiza o texto se foi enviado
+        # Atualiza campos básicos
         if 'review_text' in payload:
             review.review_text = payload['review_text']
-
-        review.is_private = payload.get('is_private', review.is_private)
+            
+        if 'is_private' in payload:
+            review.is_private = payload['is_private']
 
         # Atualiza as faixas se foram enviadas
         tracks_data = payload.get('tracks', [])
         if tracks_data:
-            ignored_count = 0
-            # Pega o total de faixas que já existem no banco para essa review para a validação
-            total_tracks = TrackReview.query.filter_by(album_review_id=review.id).count()
-
             for track_data in tracks_data:
                 # Busca a faixa no banco pelo ID do Spotify
                 track_review = TrackReview.query.filter_by(
@@ -128,30 +94,19 @@ class ReviewService:
                 ).first()
 
                 if track_review:
-                    is_ignored = track_data.get('is_ignored', track_review.is_ignored)
-                    score_val = None
-
-                    if is_ignored:
-                        ignored_count += 1
+                    # Como o Pydantic já validou, podemos confiar cegamente nos dados
+                    track_review.is_ignored = track_data.get('is_ignored', track_review.is_ignored)
+                    
+                    # O dict.get retorna None se a chave não existir, mantendo a nota antiga se o usuário não enviou
+                    if not track_review.is_ignored:
+                        track_review.score = track_data.get('userScore', track_review.score)
                     else:
-                        try:
-                            # Tenta pegar a nota nova, se não vier, mantém a antiga
-                            score_val = float(track_data.get('userScore', track_review.score))
-                        except (ValueError, TypeError):
-                            raise BusinessRuleError(f"Nota nova inválida para a faixa {track_data.get('name')}.")
+                        track_review.score = None # Se ignorou agora, a nota evapora
 
-                    # Aplica as mudanças
-                    track_review.is_ignored = is_ignored
-                    track_review.score = score_val
-                
-                # Conta quantas faixas no total acabaram ficando ignoradas
-                if not track_review and track_data.get('is_ignored'):
-                     ignored_count += 1
-            
-            # Precisamos contar as faixas que não vieram no payload mas já estavam ignoradas no banco
-            already_ignored_in_db = TrackReview.query.filter_by(album_review_id=review.id, is_ignored=True).count()
-            # Validação: se todas as faixas do álbum ficarem ignoradas após a edição
-            # (Simplificando a checagem: verificamos se sobrou alguma faixa com nota no álbum)
+            # PREPARA AS MUDANÇAS NA MEMÓRIA DO BANCO ANTES DE PERGUNTAR
+            db.session.flush()
+
+            # Sobrou alguma faixa avaliada no álbum inteiro? (nothing pro beta)
             has_valid_track = TrackReview.query.filter_by(album_review_id=review.id, is_ignored=False).first()
             
             if not has_valid_track:
@@ -183,17 +138,21 @@ class ReviewService:
 
     @staticmethod
     def get_calendar_data(user_id, month, year, request_user_id=None):
-        """
-        Retorna reviews agrupadas por dia para o calendário.
-        """
-        reviews = AlbumReview.query.filter(
+        """Retorna reviews agrupadas por dia para o calendário."""
+        
+        # Constrói a Base da Busca (sem executar ainda)
+        query = AlbumReview.query.filter(
             AlbumReview.user_id == user_id,
             extract('month', AlbumReview.created_at) == month,
             extract('year', AlbumReview.created_at) == year
-        ).order_by(AlbumReview.created_at).all()
+        )
 
+        # Aplica o Filtro de Privacidade (A Parede de Vidro) se for um visitante
         if str(request_user_id) != str(user_id):
             query = query.filter(AlbumReview.is_private == False)
+        
+        # executa a busca no banco
+        reviews = query.order_by(AlbumReview.created_at).all()
         
         calendar = {}
         for review in reviews:

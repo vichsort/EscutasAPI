@@ -2,7 +2,7 @@ from .album import AlbumBase, AlbumFull, CurationVoteInput, TrackBase
 from .artist import ArtistSummary, PlatinumStats, DiscographyItem, PlatinumProgressOutput, PlatinumTrophyOutput
 from .blog import AuthorSummary, BlogPostDetail, BlogPostList, PostUpdate, PostCreate
 from .interaction import CommentCreate, VoteCreate
-from .review import TrackInput, AlbumInput, ReviewCreate, TrackOutput, ReviewSummary, ReviewFull
+from .review import TrackInput, AlbumInput, ReviewCreate, TrackOutput, ReviewSummary, ReviewFull, ReviewUpdate, TrackUpdate
 from .spotify import CurrentPlaybackResponse, SuggestionResponse
 from .user import UserPublic, UserProfile, StatsOverview, TopArtistStat, UserStatsOutput
 
@@ -34,6 +34,8 @@ __all__ = [
     'UserPublic',
     'StatsOverview',
     'TopArtistStat',
+    'TrackUpdate',
+    'ReviewUpdate',
     'UserStatsOutput',
     'VoteCreate',
 ]
