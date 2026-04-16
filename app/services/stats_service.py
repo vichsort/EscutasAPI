@@ -3,16 +3,8 @@ from app.models import AlbumReview, UserPlatinum, User
 from app.extensions import db
 from app.services.spotify_service import SpotifyService
 from app.services.artist_service import ArtistService
-from datetime import datetime, date, timedelta
+from datetime import date, timedelta
 from sqlalchemy import func
-
-class StatsService:
-    from sqlalchemy import func, desc
-from app.extensions import db
-from app.models.review import AlbumReview
-from app.models.platinum import UserPlatinum
-from app.services.spotify_service import SpotifyService
-from app.services.artist_service import ArtistService
 
 class StatsService:
 
