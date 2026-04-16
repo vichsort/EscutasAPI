@@ -9,6 +9,31 @@ from app.extensions import db
 class ArtistService:
 
     @staticmethod
+    def search_artists(user, query: str, limit=10) -> list:
+        """
+        Busca artistas no Spotify.
+        Pode ser usado sem utilizador logado (user=None) usando o Client Credentials Flow.
+        """
+        sp = SpotifyService.get_client(user)
+
+        try:
+            results = sp.search(q=query, type='artist', limit=limit)
+            artists = []
+            
+            for item in results['artists']['items']:
+                artists.append({
+                    "id": item['id'],
+                    "name": item['name'],
+                    "image_url": item['images'][0]['url'] if item['images'] else None,
+                    "genres": item.get('genres', [])
+                })
+                
+            return artists
+
+        except SpotifyException as e:
+            raise SpotifyAPIError(f"Erro na busca de artistas: {e.msg}")
+
+    @staticmethod
     def get_platinum_progress(user, artist_id: str):
         """
         Calcula o progresso de Platina de um usuário para um artista específico.
