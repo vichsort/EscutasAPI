@@ -110,10 +110,6 @@ class ArtistService:
             percentage = round((completed_count / total_required) * 100) if total_required > 0 else 0
             is_platinum = (total_required > 0) and (completed_count == total_required)
 
-            total_required = len(required_albums)
-            percentage = round((completed_count / total_required) * 100) if total_required > 0 else 0
-            is_platinum = (total_required > 0) and (completed_count == total_required)
-
             # Verifica se o usuário já tem essa medalha no banco
             existing_plat = UserPlatinum.query.filter_by(
                 user_id=user.id, 
