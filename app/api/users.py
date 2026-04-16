@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from app.utils import success_response, require_auth, paginated_response
 from app.models import UserPlatinum
-from app.services import UserService, ReviewService, StatsService
+from app.services import UserService, ReviewService, StatsService, MetaService
 from app.schemas import ReviewSummary, PlatinumTrophyOutput, UserStatsOutput
 from app.exceptions import BusinessRuleError, ResourceNotFoundError
 
@@ -131,4 +131,28 @@ def get_user_stats(target_user_id):
     return success_response(
         data=data,
         message=f"Estatísticas de {target_user.display_name} calculadas."
+    )
+
+@users_bp.route('/<uuid:target_user_id>/monthly-title', methods=['GET'])
+@require_auth
+def get_monthly_title(target_user_id, current_user):
+    """
+    Busca o título do mês do próprio usuário.
+    Uso: GET /api/me/monthly-title?month=5&year=2026
+    """
+    try:
+        month = int(request.args.get('month'))
+        year = int(request.args.get('year'))
+    except (TypeError, ValueError):
+        raise BusinessRuleError("Parâmetros 'month' e 'year' são inválidos ou não foram enviados.")
+
+    title = MetaService.get_monthly_title(target_user_id, current_user.id, month, year)
+    
+    return success_response(
+        data={
+            "month": month, 
+            "year": year, 
+            "title": title
+        },
+        message="Título recuperado." if title else "Nenhum título para este mês."
     )

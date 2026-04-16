@@ -39,6 +39,49 @@ class User(db.Model):
         from app.models.post import BlogPost
         return db.session.query(BlogPost).filter_by(author_id=self.id).count()
 
+    @property
+    def ranks(self):
+        """
+        Calcula e retorna os ranks/badges do usuário dinamicamente
+        com base nas constantes e estatísticas atuais.
+        """
+        from app.constants import USER_RANKS
+        
+        user_ranks = {}
+        
+        def get_rank_title(category, count):
+            """Função auxiliar para varrer os levels e achar o título correto."""
+            levels = USER_RANKS.get(category, {})
+            # Começa verificando do maior pro menor
+            if count >= levels.get('LEVEL_3', {}).get('min', float('inf')): 
+                return levels['LEVEL_3']['title']
+            if count >= levels.get('LEVEL_2', {}).get('min', float('inf')): 
+                return levels['LEVEL_2']['title']
+            if count >= levels.get('LEVEL_1', {}).get('min', float('inf')): 
+                return levels['LEVEL_1']['title']
+            
+            # Se não atingiu nem o Level 1, retorna o DEFAULT (se existir) ou None
+            return levels.get('DEFAULT')
+
+        user_ranks['review'] = get_rank_title('REVIEW', self.review_count)
+        user_ranks['platinum'] = get_rank_title('PLATINUM', self.platinum_count)
+        streak = getattr(self, 'current_streak', 0)
+        user_ranks['streak'] = get_rank_title('STREAK', streak)
+        
+        # Prevenção de quebra para o que ainda vamos construir (Blog, Comments, Votes)
+        # O getattr pega o valor se a propriedade existir, senão retorna 0 para não travar a API.
+        post_count = getattr(self, 'blog_post_count', 0)
+        user_ranks['post'] = get_rank_title('POST', post_count)
+        
+        comment_count = getattr(self, 'comment_count', 0)
+        user_ranks['comment'] = get_rank_title('COMMENT', comment_count)
+        
+        vote_count = getattr(self, 'vote_count', 0)
+        user_ranks['vote'] = get_rank_title('VOTE', vote_count)
+
+        # Retorna apenas os ranks que o usuário efetivamente conquistou (remove os Nones)
+        return {k: v for k, v in user_ranks.items() if v is not None}
+
     def update_tokens(self, token_info):
         """
         Atualiza os tokens e o tempo de expiração de forma centralizada.

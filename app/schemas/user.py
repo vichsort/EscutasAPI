@@ -14,6 +14,7 @@ class UserProfile(UserPublic):
     platinum_count: int = 0
     blog_post_count: int = 0
     current_streak: int = 0
+    ranks: Dict[str, str] = {}
 
 class StatsOverview(BaseModel):
     total_reviews: int

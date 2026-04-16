@@ -1,6 +1,6 @@
 from flask import Blueprint, request
 from app.utils import success_response, paginated_response, require_auth
-from app.services import ReviewService, SpotifyService, StatsService
+from app.services import ReviewService, SpotifyService, StatsService, MetaService
 from app.schemas import ReviewSummary, PlatinumTrophyOutput, UserStatsOutput
 from app.models import UserPlatinum
 from app.exceptions import BusinessRuleError
@@ -123,4 +123,51 @@ def get_my_stats(current_user):
     return success_response(
         data=data,
         message="Suas estatísticas foram calculadas com sucesso."
+    )
+
+@me_bp.route('/monthly-title', methods=['POST'])
+@require_auth
+def set_monthly_title(current_user):
+    """
+    Define ou atualiza o título de um mês específico.
+    Payload esperado: {"month": 5, "year": 2026, "title": "A Fase do Jazz"}
+    """
+    payload = request.json
+    month = payload.get('month')
+    year = payload.get('year')
+    title = payload.get('title')
+
+    # Validação crua antes de mandar pro service
+    if not month or not year or title is None:
+        raise BusinessRuleError("Parâmetros 'month', 'year' e 'title' são obrigatórios no JSON.")
+
+    meta = MetaService.set_monthly_title(current_user.id, int(month), int(year), str(title).strip())
+    
+    return success_response(
+        data=meta.to_dict(),
+        message="Título do mês atualizado com sucesso!"
+    )
+
+@me_bp.route('/monthly-title', methods=['GET'])
+@require_auth
+def get_monthly_title(current_user):
+    """
+    Busca o título do mês do próprio usuário.
+    Uso: GET /api/me/monthly-title?month=5&year=2026
+    """
+    try:
+        month = int(request.args.get('month'))
+        year = int(request.args.get('year'))
+    except (TypeError, ValueError):
+        raise BusinessRuleError("Parâmetros 'month' e 'year' são inválidos ou não foram enviados.")
+
+    title = MetaService.get_monthly_title(current_user.id, month, year)
+    
+    return success_response(
+        data={
+            "month": month, 
+            "year": year, 
+            "title": title
+        },
+        message="Título recuperado." if title else "Nenhum título para este mês."
     )
