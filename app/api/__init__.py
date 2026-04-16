@@ -5,6 +5,7 @@ from .reviews import reviews_bp
 from .me import me_bp
 from .users import users_bp
 from .blog import blog_bp
+from .interactions import interactions_bp
 
 def register_blueprints(app):
     """Registra todos os blueprints da aplicação."""
@@ -15,3 +16,4 @@ def register_blueprints(app):
     app.register_blueprint(me_bp)
     app.register_blueprint(users_bp)
     app.register_blueprint(blog_bp)
+    app.register_blueprint(interactions_bp)

@@ -40,6 +40,18 @@ class User(db.Model):
         return db.session.query(BlogPost).filter_by(author_id=self.id).count()
 
     @property
+    def comment_count(self):
+        """Conta quantos comentários o usuário já fez na plataforma"""
+        from app.models.interaction import Comment
+        return db.session.query(Comment).filter_by(user_id=self.id).count()
+
+    @property
+    def vote_count(self):
+        """Conta quantos votos (up/down) o usuário já distribuiu"""
+        from app.models.interaction import Vote
+        return db.session.query(Vote).filter_by(user_id=self.id).count()
+
+    @property
     def ranks(self):
         """
         Calcula e retorna os ranks/badges do usuário dinamicamente
@@ -67,9 +79,7 @@ class User(db.Model):
         user_ranks['platinum'] = get_rank_title('PLATINUM', self.platinum_count)
         streak = getattr(self, 'current_streak', 0)
         user_ranks['streak'] = get_rank_title('STREAK', streak)
-        
-        # Prevenção de quebra para o que ainda vamos construir (Blog, Comments, Votes)
-        # O getattr pega o valor se a propriedade existir, senão retorna 0 para não travar a API.
+
         post_count = getattr(self, 'blog_post_count', 0)
         user_ranks['post'] = get_rank_title('POST', post_count)
         

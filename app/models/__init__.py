@@ -1,4 +1,5 @@
 from .curation import AlbumCurationVote
+from .interaction import Comment, Vote
 from .montly_meta import MonthlyMeta
 from .platinum import UserPlatinum
 from .post import BlogPost
@@ -7,6 +8,8 @@ from .user import User
 
 __all__ = [
     'AlbumCurationVote',
+    'Comment',
+    'Vote',
     'MonthlyMeta',
     'UserPlatinum', 
     'BlogPost', 
