@@ -69,3 +69,15 @@ def update_post(current_user, post_id):
         data=BlogPostDetail.model_validate(updated_post).model_dump(),
         message="Post atualizado com sucesso!"
     )
+
+@blog_bp.route('/<uuid:post_id>', methods=['DELETE'])
+@require_auth
+def delete_post(current_user, post_id):
+    """
+    Deleta um post do blog. Apenas o próprio autor consegue realizar esta ação.
+    """
+    BlogService.delete_post(post_id=str(post_id), user_id=current_user.id)
+    
+    return success_response(
+        message="Post deletado com sucesso."
+    )
