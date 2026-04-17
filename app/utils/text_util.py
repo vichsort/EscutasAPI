@@ -26,7 +26,7 @@ def clean_album_title(raw_title: str) -> str:
 def is_canonical_album(raw_title: str) -> bool:
     """
     Avalia se o álbum é canônico (estúdio). 
-    Retorna False para Ao Vivo, Coletâneas ou edições claramente não-canônicas.
+    True: álbum canônico / False: ignorável (coletânea, ao vivo, edição especial)
     """
     title_lower = raw_title.lower()
     
@@ -46,6 +46,7 @@ def is_track_skippable(raw_track_name: str) -> bool:
     """
     Avalia se a faixa é um bônus, take alternativo, versão ao vivo 
     ou remix que deve vir com o "X" marcado por padrão.
+    True: faixa ignorável / False: faixa normal
     """
     track_lower = raw_track_name.lower()
     

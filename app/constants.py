@@ -74,6 +74,10 @@ USER_RANKS = {
     }
 }
 
+# Modelos de título para os meses temáticos. O {genre} é um placeholder que é substituído
+# pelo gênero musical do mês, criando títulos envolventes e personalizados para cada edição 
+# temática. Esses modelos ajudam a criar uma identidade única para cada mês, incentivando a 
+# participação da comunidade e destacando o foco musical de forma criativa.
 MONTH_TITLE_PRESETS = [
     "A Fase do {genre}",
     "Mês do {genre}",
@@ -91,6 +95,11 @@ MONTH_TITLE_PRESETS = [
     "{genre} on fire"
 ]
 
+# Palavras chave que são consumidas em utils/text_util.py para classificar ou 
+# limpar os títulos dos álbuns e faixas, e que são armazenadas aqui para facilitar a manutenção.
+# Se um álbum tem um desses termos no título, ele pode ser classificado como não-canônico 
+# (coletânea, ao vivo, edição especial) e uma faixa que contém um desses termos pode ser marcada 
+# como ignorável (bônus, take alternativo, versão ao vivo ou remix).
 IGNORED_CONTENT_REGEX = {
     "EDITIONS": [
         'deluxe', 'expanded', 'anniversary', 'bonus', 'special edition', 
