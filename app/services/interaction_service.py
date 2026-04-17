@@ -1,8 +1,7 @@
 from sqlalchemy import func
 from app.extensions import db
-from app.models.interaction import Comment, Vote
-from app.models.review import AlbumReview
-from app.models.post import BlogPost
+from app.schemas import PaginatedCommentResponse
+from app.models import Comment, Vote, AlbumReview,BlogPost
 from app.exceptions import BusinessRuleError, ResourceNotFoundError
 
 class InteractionService:
@@ -14,11 +13,11 @@ class InteractionService:
         """
         target_type = target_type.upper()
         if target_type == 'REVIEW':
-            target = AlbumReview.query.get(target_id)
+            target = db.session.get(AlbumReview, target_id)
         elif target_type == 'POST':
-            target = BlogPost.query.get(target_id)
+            target = db.session.get(BlogPost, target_id)
         elif target_type == 'COMMENT':
-            target = Comment.query.get(target_id)
+            target = db.session.get(Comment, target_id)
         else:
             raise BusinessRuleError("Tipo de alvo inválido. Use 'REVIEW', 'POST' ou 'COMMENT'.")
 
@@ -54,13 +53,17 @@ class InteractionService:
         """Busca os comentários de forma paginada."""
         valid_type = target_type.upper()
         
-        pagination = Comment.query.filter_by(
+        paginacao = db.session.query(Comment).filter_by(
             target_id=target_id, 
             target_type=valid_type
-        ).order_by(Comment.created_at.desc())\
-         .paginate(page=page, per_page=per_page, error_out=False)
-         
-        return pagination
+        ).order_by(Comment.created_at.desc()).paginate(page=page, per_page=per_page)
+
+        return PaginatedCommentResponse(
+            items=[c.to_dict() for c in paginacao.items],
+            total=paginacao.total,
+            page=paginacao.page,
+            pages=paginacao.pages
+        )
 
     @staticmethod
     def delete_comment(user_id: str, comment_id: str):
