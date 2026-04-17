@@ -37,6 +37,7 @@ class ArtistService:
     def get_platinum_progress(user, artist_id: str):
         """
         Calcula o progresso de Platina de um usuário para um artista específico.
+        Também é usado pra construir a página do artista com todas as informações de discografia e progresso.
         """
         sp = SpotifyService.get_client(user)
 
