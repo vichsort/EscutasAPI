@@ -90,3 +90,20 @@ MONTH_TITLE_PRESETS = [
     "Intensivo de {genre}"
     "{genre} on fire"
 ]
+
+IGNORED_CONTENT_REGEX = {
+    "EDITIONS": [
+        'deluxe', 'expanded', 'anniversary', 'bonus', 'special edition', 
+        'legacy', 'tour edition', 'remaster', 'mix', 'remix', 'mono', 'stereo'
+    ],
+    "LIVE": [
+        'live', 'ao vivo', 'en vivo', 'sessions', 'unplugged', 'concert', 'bbc'
+    ],
+    "COMPILATIONS": [
+        'greatest hits', 'best of', 'anthology', 'essential', 'ultimate', 'platinum collection'
+    ],
+    "SKIPPABLE_TRACKS": [
+        'take', 'demo', 'instrumental', 'acappella', 'backing track', 
+        'early version', 'alternate', 'alt version', 'rehearsal'
+    ]
+}
