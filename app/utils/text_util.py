@@ -61,3 +61,23 @@ def is_track_skippable(raw_track_name: str) -> bool:
     padrao = rf'([\(\[].*\b({termos_regex})\b.*[\)\]]|[-—].*\b({termos_regex})\b)'
 
     return bool(re.search(padrao, track_lower))
+
+def generate_unique_slug(base_text: str, model_class, db_session) -> str:
+    """
+    Gera um slug único baseado no texto. Se já existir no banco,
+    adiciona um sufixo numérico (ex: meu-post, meu-post-1, meu-post-2).
+    """
+    if not base_text:
+        return "untitled-post"
+
+    # Converte para minúsculas, troca espaços e caracteres especiais por hífens
+    slug = re.sub(r'[^a-z0-9]+', '-', base_text.lower()).strip('-')
+    original_slug = slug
+    counter = 1
+
+    # Loop de verificação no banco de dados
+    while db_session.query(model_class).filter_by(slug=slug).first():
+        slug = f"{original_slug}-{counter}"
+        counter += 1
+
+    return slug
