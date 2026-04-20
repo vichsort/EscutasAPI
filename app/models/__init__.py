@@ -2,7 +2,7 @@ from .curation import AlbumCurationVote
 from .interaction import Comment, Vote
 from .monthly_meta import MonthlyMeta
 from .platinum import UserPlatinum
-from .post import BlogPost
+from .post import BlogPost, BlogPostMention
 from .review import AlbumReview, TrackReview
 from .user import User
 
@@ -12,7 +12,8 @@ __all__ = [
     'Vote',
     'MonthlyMeta',
     'UserPlatinum', 
-    'BlogPost', 
+    'BlogPost',
+    'BlogPostMention',
     'AlbumReview', 
     'TrackReview', 
     'User'
