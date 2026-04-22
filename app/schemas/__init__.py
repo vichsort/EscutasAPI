@@ -3,6 +3,7 @@ from .artist import ArtistSummary, PlatinumStats, DiscographyItem, PlatinumProgr
 from .blog import AuthorSummary, BlogPostDetail, BlogPostList, PostUpdate, PostCreate, MentionBase, MentionResponse, PaginatedBlogPostResponse
 from .interaction import CommentCreate, PaginatedCommentResponse, VoteCreate
 from .review import TrackInput, AlbumInput, ReviewCreate, TrackOutput, ReviewSummary, ReviewFull, ReviewUpdate, TrackUpdate, CalendarQuery, ReviewHistoryQuery
+from .search import SearchResult
 from .spotify import CurrentPlaybackResponse, SuggestionResponse
 from .user import UserPublic, UserProfile, StatsOverview, TopArtistStat, UserStatsOutput
 
@@ -30,6 +31,7 @@ __all__ = [
     'PostUpdate',
     'ReviewCreate',
     'ReviewFull',
+    'SearchResult',
     'ReviewSummary',
     'SuggestionResponse',
     'TrackInput',

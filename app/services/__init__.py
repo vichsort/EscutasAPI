@@ -7,6 +7,7 @@ from .explore_service import ExploreService
 from .interaction_service import InteractionService
 from .meta_service import MetaService
 from .review_service import ReviewService
+from .search_service import SearchService
 from .spotify_service import SpotifyService
 from .stats_service import StatsService
 from .user_service import UserService
@@ -21,6 +22,7 @@ __all__ = [
     'InteractionService',
     'MetaService',
     'ReviewService',
+    'SearchService',
     'SpotifyService',
     'StatsService',
     'UserService',

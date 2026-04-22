@@ -7,6 +7,7 @@ from .users import users_bp
 from .blog import blog_bp
 from .interactions import interactions_bp
 from .explore import explore_bp
+from .search import search_bp
 
 def register_blueprints(app):
     """Registra todos os blueprints da aplicação."""
@@ -19,3 +20,4 @@ def register_blueprints(app):
     app.register_blueprint(blog_bp)
     app.register_blueprint(interactions_bp)
     app.register_blueprint(explore_bp)
+    app.register_blueprint(search_bp)
