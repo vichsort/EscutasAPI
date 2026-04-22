@@ -11,6 +11,7 @@ from .search_service import SearchService
 from .spotify_service import SpotifyService
 from .stats_service import StatsService
 from .user_service import UserService
+from .wrapped_service import WrappedService
 
 __all__ = [
     'AlbumService',
@@ -26,4 +27,5 @@ __all__ = [
     'SpotifyService',
     'StatsService',
     'UserService',
+    'WrappedService'
 ]

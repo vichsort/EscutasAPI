@@ -116,3 +116,36 @@ IGNORED_CONTENT_REGEX = {
         'early version', 'alternate', 'alt version', 'rehearsal'
     ]
 }
+
+# Conteúdo do gerador de templates automático para o wrapped mensal do usuário. 
+# Ele é usado para criar um post em Markdown formatado, que é salvo como rascunho (DRAFT) 
+# no blog do usuário. O template é uma string com placeholders que são substituídos pelos dados 
+# calculados, como o nome do mês, total de reviews, média de avaliações, nome do melhor álbum, 
+# artista e URL da playlist. O resultado é um texto envolvente e personalizado que resume a 
+# experiência musical do usuário naquele mês, pronto para ser compartilhado com a comunidade.
+WRAPPED_MONTHLY_TEMPLATE = """
+Fala, galera! O mês de **{nome_mes}** acabou e está na hora de abrir os cofres do que rolou nos meus fones de ouvido. 
+
+Neste mês, eu mergulhei em **{total_reviews} álbuns diferentes**. Foi uma verdadeira montanha-russa sonora, e a minha média de avaliações ficou em **{average_rating} estrelas**. (Fui bonzinho ou carrasco? Fica aí o questionamento).
+
+### 🏆 O Álbum de Ouro
+De tudo que eu ouvi, teve uma obra que alugou um triplex na minha cabeça. O grande destaque de {nome_mes} vai para:
+> **{best_album_name}**, do(a) **{best_album_artist}** > *(Nota: {best_rating} / 5.0)*
+
+Se você não ouviu esse álbum ainda, faça um favor aos seus ouvidos e dê o play.
+
+### 🎧 A Trilha Sonora do Mês
+Como palavra não faz barulho, eu juntei as melhores faixas dos álbuns que receberam nota 4.0 ou mais e criei uma playlist exclusiva no Spotify com o creme de la creme do meu mês.
+
+👉 **[Clique aqui para ouvir a minha Playlist de {nome_mes}]({playlist_url})**
+
+---
+*E vocês? O que não saiu do repeat no Spotify de vocês esse mês? Deixa aí nos comentários!*
+"""
+
+# Bem autoexplicativo... São os meses do ano (uau) usado para o wrapped
+MESES = {
+        1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+        5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+        9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
+    }
