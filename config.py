@@ -18,7 +18,8 @@ class Config:
         'user-library-read '
         'user-read-recently-played '
         'user-read-currently-playing '
-        'user-top-read'
+        'user-top-read '
+        'playlist-modify-public'
     )
 
     # Cache configuration

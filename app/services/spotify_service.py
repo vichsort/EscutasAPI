@@ -185,3 +185,47 @@ class SpotifyService:
         except Exception as e:
             print(f"Erro ao buscar gêneros: {e}")
             return []
+
+    @staticmethod
+    def create_user_playlist(user_spotify_id: str, name: str, description: str, public: bool = True):
+        """
+        Cria uma nova playlist na conta do usuário do Spotify.
+        Retorna o ID da playlist criada.
+        """
+        sp = SpotifyService.get_client()
+        if not sp:
+            return None
+
+        try:
+            playlist = sp.user_playlist_create(
+                user=user_spotify_id,
+                name=name,
+                public=public,
+                description=description
+            )
+            return playlist['id']
+        except Exception as e:
+            print(f"Erro ao criar playlist no Spotify: {e}")
+            return None
+
+    @staticmethod
+    def add_tracks_to_playlist(playlist_id: str, track_uris: list):
+        """
+        Adiciona uma lista de músicas (URIs) a uma playlist específica.
+        track_uris deve ser uma lista no formato: ['spotify:track:ID1', 'spotify:track:ID2']
+        """
+        sp = SpotifyService.get_client()
+        if not sp:
+            return False
+
+        if not track_uris:
+            return True
+
+        try:
+            # O Spotify aceita no máximo 100 músicas por vez
+            # Se a lista for maior, o Spotipy lida com isso ou podemos fatiar.
+            sp.playlist_add_items(playlist_id=playlist_id, items=track_uris)
+            return True
+        except Exception as e:
+            print(f"Erro ao adicionar faixas à playlist: {e}")
+            return False
