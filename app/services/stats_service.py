@@ -1,6 +1,7 @@
 from sqlalchemy import func, desc
-from app.models import AlbumReview, UserPlatinum, User
+from app.models import AlbumReview, User
 from app.extensions import db
+from app.utils import count_user_reviews, count_user_platinums, calculate_average_score, get_tier_distribution, get_top_artists, get_community_bubble, get_user_review_dates
 from app.services.spotify_service import SpotifyService
 from app.services.artist_service import ArtistService
 from datetime import date, timedelta
@@ -11,59 +12,17 @@ class StatsService:
     @staticmethod
     def get_user_stats(user_id: str, request_user_id: str = None) -> dict:
         """
-        Calcula as estatísticas pesadas de um usuário direto no banco de dados.
+        Calcula as estatísticas de um usuário, delegando as queries pesadas 
+        para o utilitário de banco de dados (StatsUtil).
         """
         is_public_view = str(request_user_id) != str(user_id)
 
-        # Total de Reviews
-        total_query = db.session.query(AlbumReview).filter(AlbumReview.user_id == user_id)
-        if is_public_view:
-            total_query = total_query.filter(AlbumReview.is_private == False)
-        total_reviews = total_query.count()
+        total_reviews = count_user_reviews(user_id, is_public_view, db.session)
+        total_plats = count_user_platinums(user_id, db.session)
+        avg_score = calculate_average_score(user_id, is_public_view, db.session)
+        tier_dict = get_tier_distribution(user_id, is_public_view, db.session)
+        top_artists = get_top_artists(user_id, is_public_view, db.session)
 
-        # Total de Platinas (Platinas continuam normais, pois são conquistas de artistas)
-        total_plats = db.session.query(UserPlatinum).filter(UserPlatinum.user_id == user_id).count()
-
-        # Overview (A média geral de notas)
-        avg_query = db.session.query(func.avg(AlbumReview.average_score)).filter(AlbumReview.user_id == user_id)
-        if is_public_view:
-            avg_query = avg_query.filter(AlbumReview.is_private == False)
-        
-        avg_result = avg_query.scalar() # scalar() pega o valor direto ao invés de uma tupla
-        avg_score = round(avg_result, 2) if avg_result else 0.0
-
-        # Distribuição de Tiers (Agrupa e conta)
-        tiers_query_base = db.session.query(
-            AlbumReview.tier, 
-            func.count(AlbumReview.id)
-        ).filter(AlbumReview.user_id == user_id)
-        
-        if is_public_view:
-            tiers_query_base = tiers_query_base.filter(AlbumReview.is_private == False)
-            
-        tiers_query = tiers_query_base.group_by(AlbumReview.tier).all()
-
-        # Inicializa zerado para garantir que o gráfico do front-end não quebre se o cara não tiver tier "F"
-        tier_dict = {"S": 0, "A": 0, "B": 0, "C": 0, "D": 0, "F": 0}
-        for tier, count in tiers_query:
-            if tier in tier_dict:
-                tier_dict[tier] = count
-
-        # Top Artistas Mais Avaliados
-        top_artists_base = db.session.query(
-            AlbumReview.artist_name, 
-            func.count(AlbumReview.id)
-        ).filter(AlbumReview.user_id == user_id)
-        
-        if is_public_view:
-            top_artists_base = top_artists_base.filter(AlbumReview.is_private == False)
-            
-        top_artists_query = top_artists_base\
-            .group_by(AlbumReview.artist_name)\
-            .order_by(desc(func.count(AlbumReview.id)))\
-            .limit(5).all()
-
-        top_artists = [{"name": artist, "count": count} for artist, count in top_artists_query]
         user = db.session.get(User, user_id)
 
         return {
@@ -71,8 +30,8 @@ class StatsService:
                 "total_reviews": total_reviews,
                 "total_platinums": total_plats,
                 "average_score": avg_score,
-                "current_streak": user.current_streak,
-                "longest_streak": user.longest_streak
+                "current_streak": user.current_streak if user else 0,
+                "longest_streak": user.longest_streak if user else 0
             },
             "tier_distribution": tier_dict,
             "top_artists": top_artists
@@ -90,7 +49,6 @@ class StatsService:
             "community_bubble": []
         }
 
-        # Platinum Focus
         top_artists = SpotifyService.get_user_top_artists(user, limit=3)
         for artist in top_artists:
             progress = ArtistService.get_platinum_progress(user, artist['id'])
@@ -101,27 +59,7 @@ class StatsService:
                     "suggested_albums": unheard[:2]
                 })
 
-        # A Bolha da Comunidade - Tier S que tu não tens
-        # Subquery: IDs dos álbuns que o utilizador JÁ avaliou
-        reviewed_ids = db.session.query(AlbumReview.spotify_album_id).filter(
-            AlbumReview.user_id == user.id
-        ).subquery()
-
-        # Busca álbuns Tier S na comunidade que não estão na subquery
-        bubble_query = db.session.query(
-            AlbumReview.spotify_album_id,
-            AlbumReview.album_name,
-            AlbumReview.artist_name,
-            AlbumReview.cover_url,
-            func.count(AlbumReview.id).label('total_votes')
-        ).filter(
-            AlbumReview.tier == 'S',
-            AlbumReview.is_private == False,
-            AlbumReview.spotify_album_id.not_in(reviewed_ids)
-        ).group_by(
-            AlbumReview.spotify_album_id, AlbumReview.album_name, 
-            AlbumReview.artist_name, AlbumReview.cover_url
-        ).order_by(desc('total_votes')).limit(5).all()
+        bubble_results = get_community_bubble(user.id, db.session)
 
         recommendations["community_bubble"] = [
             {
@@ -130,7 +68,7 @@ class StatsService:
                 "artist": row.artist_name,
                 "cover_url": row.cover_url,
                 "reason": f"Aclamado por {row.total_votes} pessoas na comunidade"
-            } for row in bubble_query
+            } for row in bubble_results
         ]
 
         return recommendations
@@ -145,18 +83,10 @@ class StatsService:
         if not user:
             return 0
 
-        # Pega todas as datas únicas em que o usuário fez reviews (ordenadas da mais nova para a mais antiga)
-        # Usamos cast para DATE para ignorar as horas
-        dates_query = db.session.query(
-            func.cast(AlbumReview.created_at, db.Date) 
-        ).filter(
-            AlbumReview.user_id == user_id
-        ).distinct().order_by(desc(func.cast(AlbumReview.created_at, db.Date))).all()
+        # busca datas
+        review_dates = get_user_review_dates(user_id, db.session)
 
-        # Transforma em uma lista de objetos date do Python
-        # Ex: [date(2023, 10, 20), date(2023, 10, 19), date(2023, 10, 17)]
-        review_dates = [d[0] for d in dates_query]
-
+        # se não tem datas, zera a streak
         if not review_dates:
             user.current_streak = 0
             db.session.commit()
@@ -165,19 +95,18 @@ class StatsService:
         today = date.today()
         yesterday = today - timedelta(days=1)
 
-        # Verifica se a streak ainda está viva
-        # Se a review mais recente não for de hoje nem de ontem, a streak quebrou.
+        # verifica se a streak ainda está viva
         if review_dates[0] < yesterday:
             user.current_streak = 0
         else:
             # Conta a streak atual
             current_count = 1
             for i in range(len(review_dates) - 1):
-                # Se a diferença entre uma data e a próxima for de exatamente 1 dia, a streak continua
+                # Se a diferença for exatamente 1 dia, a streak continua
                 if review_dates[i] - review_dates[i+1] == timedelta(days=1):
                     current_count += 1
                 else:
-                    # Se houver um buraco de mais de 1 dia, paramos de contar a streak atual
+                    # Se houver um buraco, quebrou a streak atual
                     break
             user.current_streak = current_count
 
