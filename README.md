@@ -1,5 +1,12 @@
 # Escutas API
 
+![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
+![Python](https://img.shields.io/badge/Testing-Pytest-blue.svg)
+![Flask](https://img.shields.io/badge/Flask-3.0-black.svg)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-orange.svg)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue.svg)
+![Redis](https://img.shields.io/badge/Redis-Cloud-red.svg)
+
 Backend robusto para uma rede social de avaliação de álbuns musicais ("Letterboxd para Música").
 Construído com **Flask**, **PostgreSQL** e **Spotify API**, focado em Clean Architecture, performance e escalabilidade.
 
@@ -18,7 +25,7 @@ Construído com **Flask**, **PostgreSQL** e **Spotify API**, focado em Clean Arc
 
 Antes de começar, certifique-se de ter instalado:
 
-* [Python 3.10+](https://www.python.org/)
+* [Python 3.11+](https://www.python.org/)
 * [PostgreSQL](https://www.postgresql.org/)
 * [Ngrok](https://ngrok.com/) (Essencial para testar o callback do Spotify)
 * [Redis](https://redis.io/) (Opcional, mas recomendado para performance)
@@ -160,12 +167,34 @@ O servidor estará rodando em `http://127.0.0.1:5000` (ou na URL do Ngrok).
 O projeto segue princípios de **Clean Architecture** adaptados para Flask:
 
 * **`app/api/` (Controllers):** Recebem requisições HTTP, validam input e chamam serviços. Retornam JSON.
-* **`app/services/` (Business Logic):** Contêm toda a regra de negócio. Não sabem o que é HTTP.
 * **`app/models/` (Data Layer):** Definições das tabelas do banco e índices.
 * **`app/schemas/` (Data Transfer):** Classes **Pydantic** que definem o contrato de dados (entrada e saída), garantindo segurança e tipagem.
+* **`app/services/` (Business Logic):** Contêm toda a regra de negócio. Atuam como serviços e entregam apenas a parte lógica e contratual do sistema.
+* **`app/utils/` (Repositórios & Ferramentas):** Isolam o processamento pesado. Aqui vivem os Cientistas de Dados (queries complexas em SQLAlchemy) e geradores de templates.
+
+## Arquitetura de testes
+
+Divididos em três subpastas, os tests efetuados com pytest concluem verificações de controllers, data, services e utils.
+
+* **`tests/infrastructure/` (Infra):** Indiferem do restante do sistema, condizem apenas à aplicabilidade sistemática do projeto. No futuro pode servir para responses e demais características, atualmente aplicados para verificar o cacheamento.
+* **`tests/integrations/` (Api):** Análise do fluxo completo que simulam contextos inteiros reais, sem efetuar as chamadas à API do spotify por fazer o sequestro das funções realizadoras. Como cirurgias mais precisas que detalham mais os pontos.
+* **`tests/unit/` (Unitários):** Presença e atividade de retorno seguindo o esperado, sem adentrar em camadas complexas de processamento, por exemplo.
+
+### Testando o projeto
+
+A API possui uma suíte de testes de integração e infraestrutura rigorosa, utilizando Mocks para simular a API do Spotify e garantir a segurança das regras de negócio sem consumir cotas de rede.
+
+```bash
+# Rodar todos os testes
+pytest
+
+# Rodar testes com log detalhado de falhas
+pytest -v
+```
 
 ### Principais Otimizações
 
-* **Índices Compostos:** Otimização para buscas de calendário (`user_id` + `created_at`).
+* **Separação de Responsabilidades (SRP):** Prevenção de "God Objects" delegando matemática de banco de dados para utilitários isolados.
+* **Índices e Agregações:** Consultas pesadas de Wrapped e Distribuição de Tiers resolvidas nativamente no PostgreSQL (func.avg, func.count).
 * **Eager Loading:** Uso de `joinedload` para eliminar o problema de N+1 queries em listagens.
-* **Cache:** Cacheamento de buscas do Spotify para economizar cota de API.
+* **Cache:** Cacheamento e buscas curtas (Omnibox) de buscas do Spotify para economizar cota de API.
