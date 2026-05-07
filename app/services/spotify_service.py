@@ -87,7 +87,7 @@ class SpotifyService:
         )
 
     @staticmethod
-    def get_currently_playing(user) -> Optional[CurrentPlaybackResponse]:
+    def get_now_playing(user) -> Optional[CurrentPlaybackResponse]:
         """
         Busca o álbum que está sendo tocado nesse momento pelo usuário.
         """
@@ -112,7 +112,7 @@ class SpotifyService:
             raise SpotifyAPIError(f"Erro na API do Spotify: {e.msg}")
 
     @staticmethod
-    def get_recently_played_suggestions(user, limit=50, threshold=3) -> List[SuggestionResponse]:
+    def get_suggestions(user, limit=50, threshold=3) -> List[SuggestionResponse]:
         """
         Analisa o histórico recente do usuário para sugerir álbuns que ele tem ouvido com frequência.
         O método busca as últimas faixas tocadas (limit) e conta quantas vezes cada álbum aparece.

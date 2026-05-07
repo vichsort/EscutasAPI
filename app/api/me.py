@@ -22,11 +22,14 @@ def get_now_playing(current_user):
     """
     Retorna o que o usuário está ouvindo agora no Spotify.
     """
-    track_data = SpotifyService.get_now_playing(current_user)
+    now_playing = SpotifyService.get_now_playing(current_user)
+    
+    # Se existir, convertemos para dicionário. Se não, devolvemos None.
+    data = now_playing.model_dump(mode='json') if now_playing else None
     
     return success_response(
-        data=track_data,
-        message="Buscando a música atual." if track_data else "Nada tocando no momento."
+        data=data,
+        message="Encontrada a música atual."
     )
 
 @me_bp.route('/suggestions', methods=['GET'])
@@ -37,8 +40,11 @@ def get_suggestions(current_user):
     """
     suggestions = SpotifyService.get_suggestions(current_user)
     
+    # Convertemos CADA objeto da lista para dicionário
+    data = [s.model_dump(mode='json') for s in suggestions]
+    
     return success_response(
-        data=suggestions,
+        data=data,
         message="Sugestões recuperadas."
     )
 
