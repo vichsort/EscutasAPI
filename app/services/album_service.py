@@ -59,28 +59,35 @@ class AlbumService:
             raise SpotifyAPIError(f"Erro na busca de álbuns: {e.msg}")
 
     @staticmethod
-    @cache.memoize(timeout=604800)
     def get_album_details(user, album_id: str) -> Optional[AlbumFull]:
-        """
-        Busca detalhes e sugere quais faixas devem ser ignoradas.
-        """
         sp = SpotifyService.get_client(user)
+        return AlbumService._get_album_details_cached(user.spotify_id, album_id, sp)
 
+    @staticmethod
+    @cache.memoize(timeout=604800)
+    def _get_album_details_cached(spotify_id: str, album_id: str, sp) -> Optional[AlbumFull]:
         try:
             album_data = sp.album(album_id)
 
             tracks_objects = []
-            for track in album_data['tracks']['items']:
-                track_name = track['name']
+            tracks_data = album_data['tracks']
+
+            while True:
+                for track in tracks_data['items']:
+                    track_name = track['name']
+                    tracks_objects.append(TrackBase(
+                        id=track['id'],
+                        name=track_name,
+                        track_number=track['track_number'],
+                        duration_ms=track['duration_ms'],
+                        preview_url=track['preview_url'],
+                        suggested_ignore=is_track_skippable(track_name)
+                    ))
                 
-                tracks_objects.append(TrackBase(
-                    id=track['id'],
-                    name=track_name,
-                    track_number=track['track_number'],
-                    duration_ms=track['duration_ms'],
-                    preview_url=track['preview_url'],
-                    suggested_ignore=is_track_skippable(track_name)
-                ))
+                if not tracks_data['next']:
+                    break
+                    
+                tracks_data = sp.next(tracks_data)
 
             raw_name = album_data['name']
             cover = album_data['images'][0]['url'] if album_data['images'] else None

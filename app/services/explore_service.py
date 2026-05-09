@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, desc
-from app.extensions import db
+from app.extensions import db, cache
 from app.models import AlbumReview, User
 from app.constants import HALL_OF_FAME_MIN_REVIEWS, TRENDING_DAYS_LIMIT
 from app.schemas import ReviewSummary
@@ -8,6 +8,7 @@ from app.schemas import ReviewSummary
 class ExploreService:
 
     @staticmethod
+    @cache.memoize(timeout=300) 
     def get_trending_albums(limit=10) -> list:
         """
         Retorna os álbuns com mais reviews públicas nos últimos X dias.
@@ -43,6 +44,7 @@ class ExploreService:
         ]
 
     @staticmethod
+    @cache.memoize(timeout=600)
     def get_hall_of_fame(limit=10) -> list:
         """
         Retorna os álbuns com a maior média de notas de todos os tempos.
@@ -78,6 +80,7 @@ class ExploreService:
         ]
 
     @staticmethod
+    @cache.memoize(timeout=300)
     def get_global_feed(limit=20) -> list:
         """
         Retorna as reviews públicas mais recentes feitas por qualquer usuário na plataforma.
@@ -89,6 +92,7 @@ class ExploreService:
         return [ReviewSummary.model_validate(r).model_dump() for r in reviews]
 
     @staticmethod
+    @cache.memoize(timeout=300)
     def get_top_reviewers(limit=5) -> list:
         """
         Retorna os usuários que mais fizeram reviews públicas nos últimos X dias.

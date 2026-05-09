@@ -1,3 +1,4 @@
+from app.extensions import cache
 from app.services.curation_service import CurationService
 from app.services.spotify_service import SpotifyService
 from app.models import AlbumReview, UserPlatinum
@@ -10,12 +11,12 @@ class ArtistService:
 
     @staticmethod
     def search_artists(user, query: str, limit=10) -> list:
-        """
-        Busca artistas no Spotify.
-        Pode ser usado sem utilizador logado (user=None) usando o Client Credentials Flow.
-        """
         sp = SpotifyService.get_client(user)
+        return ArtistService._search_artists_cached(user.spotify_id, query, limit, sp)
 
+    @staticmethod
+    @cache.memoize(timeout=3600)
+    def _search_artists_cached(spotify_id: str, query: str, limit: int, sp) -> list:
         try:
             results = sp.search(q=query, type='artist', limit=limit)
             artists = []
@@ -35,12 +36,12 @@ class ArtistService:
 
     @staticmethod
     def get_platinum_progress(user, artist_id: str):
-        """
-        Calcula o progresso de Platina de um usuário para um artista específico.
-        Também é usado pra construir a página do artista com todas as informações de discografia e progresso.
-        """
         sp = SpotifyService.get_client(user)
+        return ArtistService._get_platinum_progress_cached(str(user.id), artist_id, sp, user)
 
+    @staticmethod
+    @cache.memoize(timeout=3600)
+    def _get_platinum_progress_cached(user_id: str, artist_id: str, sp, user) -> dict:
         if not artist_id: 
             raise ResourceNotFoundError("Artista")
 
