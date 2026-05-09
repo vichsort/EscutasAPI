@@ -3,7 +3,6 @@ from functools import wraps
 from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
 from app.models import User
 from app.utils.response_util import APIError
-from app.services.spotify_service import SpotifyService
 
 def require_auth(f):
     """
@@ -39,6 +38,7 @@ def ensure_spotify_token(f):
     def decorated(*args, **kwargs):
         current_user = kwargs.get('current_user')
         if current_user:
+            from app.services.spotify_service import SpotifyService
             SpotifyService.maybe_refresh_token(current_user)
         return f(*args, **kwargs)
     return decorated

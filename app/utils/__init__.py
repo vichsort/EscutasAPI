@@ -1,4 +1,4 @@
-from .decorator_util import require_auth
+from .decorator_util import require_auth, ensure_spotify_token
 from .response_util import APIError, success_response, paginated_response, error_response, handle_exception
 from .text_util import clean_album_title, is_canonical_album, is_track_skippable, generate_unique_slug
 from .user_util import resolve_target_user
@@ -9,6 +9,7 @@ from .mention_util import sync_post_mentions
 
 __all__ = [
     'require_auth', 
+    'ensure_spotify_token',
     'APIError',
     'success_response', 
     'paginated_response', 
