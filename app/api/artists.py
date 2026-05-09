@@ -1,5 +1,5 @@
 from flask import Blueprint, request
-from app.utils import success_response, require_auth
+from app.utils import success_response, require_auth, ensure_spotify_token
 from app.services import ArtistService
 from app.schemas import PlatinumProgressOutput
 from app.exceptions import BusinessRuleError
@@ -22,9 +22,11 @@ def get_platinum_progress(current_user, artist_id):
     )
 
 @artists_bp.route('/search', methods=['GET'])
+@require_auth
+@ensure_spotify_token
 def search_artists():
     """
-    Busca de Artistas (Pública).
+    Busca de Artistas.
     O Frontend pode chamar esta rota em paralelo com a busca de álbuns 
     para montar uma 'Busca Unificada'.
     """

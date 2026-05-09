@@ -1,5 +1,5 @@
 from flask import Blueprint, request
-from app.utils import success_response, require_auth
+from app.utils import success_response, require_auth, ensure_spotify_token
 from app.services import AlbumService, CurationService
 from app.exceptions import BusinessRuleError, ResourceNotFoundError
 from app.schemas import CurationVoteInput
@@ -8,6 +8,7 @@ albums_bp = Blueprint('albums', __name__, url_prefix='/api/albums')
 
 @albums_bp.route('/search', methods=['GET'])
 @require_auth
+@ensure_spotify_token
 def search_albums(current_user):
     """
     Busca álbuns no Spotify.
@@ -28,6 +29,7 @@ def search_albums(current_user):
 
 @albums_bp.route('/<spotify_id>', methods=['GET'])
 @require_auth
+@ensure_spotify_token
 def get_album_details(current_user, spotify_id):
     """
     Retorna os detalhes completos de um álbum.

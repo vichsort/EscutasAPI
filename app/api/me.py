@@ -1,5 +1,5 @@
 from flask import Blueprint, request
-from app.utils import success_response, require_auth
+from app.utils import success_response, require_auth, ensure_spotify_token
 from app.services import SpotifyService, MetaService
 from app.exceptions import BusinessRuleError
 
@@ -7,6 +7,7 @@ me_bp = Blueprint('me', __name__, url_prefix='/api/me')
 
 @me_bp.route('', methods=['GET'])
 @require_auth
+@ensure_spotify_token
 def get_my_profile(current_user):
     """
     Retorna os dados do próprio usuário logado.
@@ -18,6 +19,7 @@ def get_my_profile(current_user):
 
 @me_bp.route('/now-playing', methods=['GET'])
 @require_auth
+@ensure_spotify_token
 def get_now_playing(current_user):
     """
     Retorna o que o usuário está ouvindo agora no Spotify.
@@ -34,6 +36,7 @@ def get_now_playing(current_user):
 
 @me_bp.route('/suggestions', methods=['GET'])
 @require_auth
+@ensure_spotify_token
 def get_suggestions(current_user):
     """
     Retorna recomendações personalizadas do Spotify para o usuário.
