@@ -16,6 +16,8 @@ class UserPlatinum(db.Model):
     
     achieved_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
+    spotify_artist_id = db.Column(db.String(100), db.ForeignKey('artists.spotify_artist_id'), nullable=False)
+
     __table_args__ = (
         # Garante que o usuário não ganhe duas medalhas repetidas da mesma banda
         db.UniqueConstraint('user_id', 'spotify_artist_id', name='uix_user_artist_platinum'),

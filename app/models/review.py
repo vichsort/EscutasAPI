@@ -29,6 +29,9 @@ class AlbumReview(db.Model):
     # Relacionamento com as faixas
     tracks = db.relationship('TrackReview', backref='album_review', lazy=True, cascade="all, delete-orphan")
 
+    artist_spotify_id = db.Column(db.String(100), db.ForeignKey('artists.spotify_artist_id'), nullable=True, index=True)
+    album_spotify_id_fk = db.Column(db.String(100), db.ForeignKey('albums.spotify_album_id'), nullable=True, index=True)
+
     __table_args__ = (
         db.Index('idx_reviews_user_date', 'user_id', 'created_at'),
         db.Index('idx_reviews_spotify_album', 'spotify_album_id'),
