@@ -3,6 +3,7 @@ from functools import wraps
 from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
 from app.models import User
 from app.utils.response_util import APIError
+from app.services.spotify_service import SpotifyService
 
 def require_auth(f):
     """
@@ -25,4 +26,19 @@ def require_auth(f):
 
         return f(current_user, *args, **kwargs)
         
+    return decorated
+
+def ensure_spotify_token(f):
+    """
+    Decorator para proteger rotas.
+    Garante que o token do spotify do usuário esteja 
+    atualizado antes de acessar a rota, levando pra
+    um refresh forçado se avaliado.
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        current_user = kwargs.get('current_user')
+        if current_user:
+            SpotifyService.maybe_refresh_token(current_user)
+        return f(*args, **kwargs)
     return decorated

@@ -12,6 +12,7 @@ from app.schemas import AlbumBase, CurrentPlaybackResponse, SuggestionResponse
 from app.exceptions import SpotifyAPIError, AuthenticationError 
 
 class SpotifyService:
+    _client_cache: dict = {}
     
     @staticmethod
     def get_oauth_object(redirect_uri=None):
@@ -54,18 +55,11 @@ class SpotifyService:
 
         expires_at = user.token_expires_at or 0
         now = int(time.time())
-        
-        if expires_at - now < 60:
-            try:
-                sp_oauth = SpotifyService.get_oauth_object()
-                new_token_info = sp_oauth.refresh_access_token(user.refresh_token)
-                
-                user.update_tokens(new_token_info)
-                db.session.commit()
-            except Exception as e:
-                raise AuthenticationError("Sessão do Spotify expirou e não pôde ser renovada.")
 
-        return Spotify(auth=user.access_token)
+        if user.spotify_id not in SpotifyService._client_cache:
+            SpotifyService._client_cache[user.spotify_id] = Spotify(auth=user.access_token)
+
+        return SpotifyService._client_cache[user.spotify_id]
     
     @staticmethod
     def _extract_album_object(track_data) -> Optional[AlbumBase]:
@@ -229,3 +223,17 @@ class SpotifyService:
         except Exception as e:
             print(f"Erro ao adicionar faixas à playlist: {e}")
             return False
+
+    @staticmethod
+    def maybe_refresh_token(user):
+        expires_at = user.token_expires_at or 0
+        now = int(time.time())
+        if expires_at - now < 60:
+            try:
+                sp_oauth = SpotifyService.get_oauth_object()
+                new_token_info = sp_oauth.refresh_access_token(user.refresh_token)
+                user.update_tokens(new_token_info)
+                db.session.commit()
+                SpotifyService._client_cache.pop(user.spotify_id, None)
+            except Exception:
+                raise AuthenticationError("Sessão do Spotify expirou e não pôde ser renovada.")
