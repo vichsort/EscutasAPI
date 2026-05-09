@@ -1,6 +1,6 @@
 import uuid
 from app.schemas import ReviewSummary
-from app.extensions import db
+from app.extensions import db, cache
 from app.models import AlbumReview, TrackReview
 from app.exceptions import BusinessRuleError, ResourceNotFoundError
 
@@ -65,7 +65,7 @@ class ReviewService:
 
         return review
 
-    staticmethod
+    @staticmethod
     def update_review(user, review_id, payload):
         """
         Atualiza uma review existente.
@@ -136,6 +136,7 @@ class ReviewService:
         return True
 
     @staticmethod
+    @cache.memoize(timeout=120)
     def get_calendar_data(user_id, month, year, request_user_id=None):
         """Retorna reviews agrupadas por dia para o calendário (Já formatadas para JSON)."""
         from sqlalchemy import extract
@@ -165,6 +166,7 @@ class ReviewService:
         return calendar
 
     @staticmethod
+    @cache.memoize(timeout=120)
     def get_reviews(user_id, page=1, per_page=10, filters=None, request_user_id=None):
         """Retorna reviews paginadas para o histórico com filtros opcionais (Já formatadas)."""
         query = AlbumReview.query.filter_by(user_id=user_id)

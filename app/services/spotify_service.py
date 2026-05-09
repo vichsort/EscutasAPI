@@ -7,7 +7,7 @@ from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth, SpotifyClientCredentials
 from spotipy.cache_handler import MemoryCacheHandler
 from spotipy.exceptions import SpotifyException
-from app.extensions import db
+from app.extensions import db, cache
 from app.schemas import AlbumBase, CurrentPlaybackResponse, SuggestionResponse
 from app.exceptions import SpotifyAPIError, AuthenticationError 
 
@@ -81,6 +81,7 @@ class SpotifyService:
         )
 
     @staticmethod
+    @cache.memoize(timeout=600)
     def get_now_playing(user) -> Optional[CurrentPlaybackResponse]:
         """
         Busca o álbum que está sendo tocado nesse momento pelo usuário.
@@ -106,6 +107,7 @@ class SpotifyService:
             raise SpotifyAPIError(f"Erro na API do Spotify: {e.msg}")
 
     @staticmethod
+    @cache.memoize(timeout=600)
     def get_suggestions(user, limit=50, threshold=3) -> List[SuggestionResponse]:
         """
         Analisa o histórico recente do usuário para sugerir álbuns que ele tem ouvido com frequência.
@@ -155,6 +157,7 @@ class SpotifyService:
             raise SpotifyAPIError(f"Não foi possível buscar histórico recente: {e.msg}")
 
     @staticmethod
+    @cache.memoize(timeout=600)
     def get_user_top_artists(user, limit=5, time_range='short_term'):
         """
         Retorna os artistas que o usuário mais ouviu recentemente.
@@ -165,6 +168,7 @@ class SpotifyService:
         return results['items']
 
     @staticmethod
+    @cache.memoize(timeout=172800)
     def get_artist_genres(user, artist_id: str) -> list:
         """
         Busca os gêneros musicais de um artista no Spotify.
