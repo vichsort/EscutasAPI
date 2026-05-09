@@ -62,7 +62,7 @@ class SearchService:
                sa.select(AlbumReview).where(AlbumReview.album_name.ilike(f'%{query}%')).limit(limit_per_type)
             ).scalars().all()
             for r in reviews:
-               results.append(SearchResult(id=str(r.id), name=r.album_name, type='REVIEW', subtitle="Sua Review"))
+               results.append(SearchResult(id=str(r.id), name=r.album_name, type='REVIEW', subtitle="Reviews da Comunidade"))
 
         except Exception as e:
             print(f"Erro na busca rápida: {e}")
