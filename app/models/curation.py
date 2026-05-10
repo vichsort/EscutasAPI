@@ -16,7 +16,7 @@ class AlbumCurationVote(db.Model):
     
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    spotify_album_id = db.Column(db.String(100), db.ForeignKey('albums.spotify_album_id'), nullable=False, index=True)
+    spotify_album_id = db.Column(db.String(100), nullable=False, index=True)
 
     __table_args__ = (
         # Garante que um usuário só tenha UM voto ativo por álbum. 
