@@ -3,6 +3,7 @@ from app.schemas import ReviewSummary
 from app.extensions import db, cache
 from app.models import AlbumReview, TrackReview
 from app.exceptions import BusinessRuleError, ResourceNotFoundError
+from app.services.stats_service import StatsService
 
 class ReviewService:
     @staticmethod
@@ -65,8 +66,10 @@ class ReviewService:
         review.update_stats()
         db.session.commit()
 
-        from app.services.stats_service import StatsService
         StatsService.calculate_and_update_streak(user.id)
+
+        cache.delete_memoized(ReviewService._get_reviews_cached, str(user.id))
+        cache.delete_memoized(ReviewService.get_calendar_data, str(user.id))
 
         return review
 
@@ -121,6 +124,10 @@ class ReviewService:
             review.update_stats()
 
         db.session.commit()
+
+        cache.delete_memoized(ReviewService._get_reviews_cached, str(review.user_id))
+        cache.delete_memoized(ReviewService.get_calendar_data, str(review.user_id))
+
         return review
 
     @staticmethod
@@ -135,8 +142,10 @@ class ReviewService:
         db.session.delete(review)
         db.session.commit()
 
-        from app.services.stats_service import StatsService
         StatsService.calculate_and_update_streak(user.id)
+
+        cache.delete_memoized(ReviewService._get_reviews_cached, str(review.user_id))
+        cache.delete_memoized(ReviewService.get_calendar_data, str(review.user_id))
 
         return True
 
