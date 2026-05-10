@@ -188,26 +188,31 @@ class ReviewService:
     @cache.memoize(timeout=120)
     def _get_reviews_cached(user_id, page, per_page, filters_tuple, request_user_id):
         filters = dict(filters_tuple) if filters_tuple else None
-        
+
         query = AlbumReview.query.filter_by(user_id=user_id)
 
         if str(request_user_id) != str(user_id):
             query = query.filter_by(is_private=False)
-        
+
         if filters:
             if filters.get('tier'):
                 query = query.filter(AlbumReview.tier == filters['tier'])
             if filters.get('search'):
                 term = f"%{filters['search']}%"
                 query = query.filter(
-                    (AlbumReview.album_name.ilike(term)) | 
+                    (AlbumReview.album_name.ilike(term)) |
                     (AlbumReview.artist_name.ilike(term))
                 )
 
         pagination = query.order_by(AlbumReview.created_at.desc())\
             .paginate(page=page, per_page=per_page, error_out=False)
-            
-        items_pydantic = [ReviewSummary.model_validate(item) for item in pagination.items]
-        pagination.items = [item.model_dump() for item in items_pydantic]
-            
-        return pagination
+
+        return {
+            "items": [ReviewSummary.model_validate(item).model_dump() for item in pagination.items],
+            "page": pagination.page,
+            "per_page": pagination.per_page,
+            "total": pagination.total,
+            "pages": pagination.pages,
+            "has_next": pagination.has_next,
+            "has_prev": pagination.has_prev
+        }
