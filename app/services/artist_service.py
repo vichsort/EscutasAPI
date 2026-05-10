@@ -56,7 +56,11 @@ class ArtistService:
         Também é usado pra construir a página do artista com todas as informações de discografia e progresso.
         """
         sp = SpotifyService.get_client(user)
-        return ArtistService._get_platinum_progress_cached(str(user.id), artist_id, sp, user)
+        result = ArtistService._get_platinum_progress_cached(str(user.id), artist_id, sp, user)
+        
+        ArtistService._handle_platinum_medal(user, artist_id, result)
+        
+        return result
 
     @staticmethod
     @cache.memoize(timeout=3600)
@@ -129,23 +133,6 @@ class ArtistService:
             percentage = round((completed_count / total_required) * 100) if total_required > 0 else 0
             is_platinum = (total_required > 0) and (completed_count == total_required)
 
-            existing_plat = UserPlatinum.query.filter_by(
-                user_id=user.id,
-                spotify_artist_id=artist_id
-            ).first()
-
-            if is_platinum and not existing_plat:
-                db.session.add(UserPlatinum(
-                    user_id=user.id,
-                    spotify_artist_id=artist_id,
-                    artist_name=artist.name,
-                    artist_image_url=artist.image_url
-                ))
-                db.session.commit()
-            elif not is_platinum and existing_plat:
-                db.session.delete(existing_plat)
-                db.session.commit()
-
             return {
                 "artist": {
                     "id": artist_id,
@@ -165,3 +152,25 @@ class ArtistService:
             if e.http_status == 404:
                 raise ResourceNotFoundError("Artista")
             raise SpotifyAPIError(f"Erro ao buscar artista no Spotify: {e.msg}")
+
+    @staticmethod
+    def _handle_platinum_medal(user, artist_id: str, result: dict):
+        is_platinum = result['stats']['is_platinum']
+        artist = result['artist']
+
+        existing_plat = UserPlatinum.query.filter_by(
+            user_id=user.id,
+            spotify_artist_id=artist_id
+        ).first()
+
+        if is_platinum and not existing_plat:
+            db.session.add(UserPlatinum(
+                user_id=user.id,
+                spotify_artist_id=artist_id,
+                artist_name=artist['name'],
+                artist_image_url=artist['image_url']
+            ))
+            db.session.commit()
+        elif not is_platinum and existing_plat:
+            db.session.delete(existing_plat)
+            db.session.commit()
