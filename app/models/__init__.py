@@ -2,6 +2,7 @@ from .album_track import AlbumTrack
 from .album import Album
 from .artist import Artist
 from .curation import AlbumCurationVote
+from .custom_album import CustomAlbum
 from .interaction import Comment, Vote
 from .monthly_meta import MonthlyMeta
 from .platinum import UserPlatinum
@@ -14,6 +15,7 @@ __all__ = [
     'Album',
     'Artist',
     'AlbumCurationVote',
+    'CustomAlbum',
     'Comment',
     'Vote',
     'MonthlyMeta',

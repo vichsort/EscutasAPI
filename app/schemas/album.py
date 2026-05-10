@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
+from datetime import datetime
 
 class TrackBase(BaseModel):
     id: str
@@ -26,3 +27,18 @@ class AlbumFull(AlbumBase):
 
 class CurationVoteInput(BaseModel):
     is_canonical: bool
+
+class CustomAlbumCreate(BaseModel):
+    name: str
+    artist_name: str
+    cover_url: Optional[str] = None
+
+class CustomAlbumOutput(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    artist_name: str
+    cover_url: Optional[str] = None
+    created_at: datetime
+    spotify_album_id: str  # retorna o custom:uuid pro frontend usar normalmente
