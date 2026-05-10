@@ -1,4 +1,4 @@
-from .album import AlbumBase, AlbumFull, CurationVoteInput, TrackBase, CustomAlbumCreate, CustomAlbumOutput
+from .album import AlbumBase, AlbumFull, CurationVoteInput, TrackBase, CustomAlbumCreate, CustomAlbumOutput, CustomAlbumTrackCreate, CustomAlbumTrackOutput
 from .artist import ArtistSummary, PlatinumStats, DiscographyItem, PlatinumProgressOutput, PlatinumTrophyOutput
 from .blog import AuthorSummary, BlogPostDetail, BlogPostList, PostUpdate, PostCreate, MentionBase, MentionResponse, PaginatedBlogPostResponse
 from .interaction import CommentCreate, PaginatedCommentResponse, VoteCreate
@@ -13,6 +13,8 @@ __all__ = [
     'TrackBase',
     'CustomAlbumCreate',
     'CustomAlbumOutput',
+    'CustomAlbumTrackCreate',
+    'CustomAlbumTrackOutput',
     'AlbumInput',
     'ArtistSummary',
     'AuthorSummary',

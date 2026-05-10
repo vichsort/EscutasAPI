@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import List, Optional
 from datetime import datetime
 
@@ -28,10 +28,31 @@ class AlbumFull(AlbumBase):
 class CurationVoteInput(BaseModel):
     is_canonical: bool
 
+class CustomAlbumTrackCreate(BaseModel):
+    name: str
+    track_number: int
+    duration_ms: Optional[int] = None
+
+class CustomAlbumTrackOutput(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: str
+    name: str
+    track_number: int
+    duration_ms: Optional[int] = None
+
 class CustomAlbumCreate(BaseModel):
     name: str
     artist_name: str
     cover_url: Optional[str] = None
+    tracks: List[CustomAlbumTrackCreate] = []
+
+    @field_validator('cover_url')
+    @classmethod
+    def validate_cover_url(cls, v):
+        if v and not v.startswith(('https://', 'http://')):
+            raise ValueError('cover_url deve ser uma URL válida.')
+        return v
 
 class CustomAlbumOutput(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -41,4 +62,5 @@ class CustomAlbumOutput(BaseModel):
     artist_name: str
     cover_url: Optional[str] = None
     created_at: datetime
-    spotify_album_id: str  # retorna o custom:uuid pro frontend usar normalmente
+    spotify_album_id: str
+    tracks: List[CustomAlbumTrackOutput] = []

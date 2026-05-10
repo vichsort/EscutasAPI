@@ -15,6 +15,8 @@ class CustomAlbum(db.Model):
 
     owner = db.relationship('User', backref=db.backref('custom_albums', lazy=True))
 
+    tracks = db.relationship('CustomAlbumTrack', backref='album', lazy=True, cascade="all, delete-orphan")
+
     @property
     def spotify_album_id(self):
         """Gera o ID no formato custom:uuid pra compatibilidade com o resto do sistema."""
