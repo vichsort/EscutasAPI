@@ -25,7 +25,7 @@ class ReviewService:
         # Busca gêneros
         artist_id = album_data.get('artist_id') 
         final_genres = []
-        if artist_id:
+        if artist_id and not spotify_id.startswith('custom:'):
             from app.models.artist import Artist
             from app.services.spotify_service import SpotifyService
             artist = Artist.query.filter_by(spotify_artist_id=artist_id).first()
