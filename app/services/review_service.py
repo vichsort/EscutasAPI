@@ -26,8 +26,13 @@ class ReviewService:
         artist_id = album_data.get('artist_id') 
         final_genres = []
         if artist_id:
+            from app.models.artist import Artist
             from app.services.spotify_service import SpotifyService
-            final_genres = SpotifyService.get_artist_genres(user, artist_id)
+            artist = Artist.query.filter_by(spotify_artist_id=artist_id).first()
+            if artist and artist.genres:
+                final_genres = artist.genres
+            else:
+                final_genres = SpotifyService.get_artist_genres(user, artist_id)
 
         # Criando o registro pai
         review = AlbumReview(
