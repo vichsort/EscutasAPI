@@ -35,11 +35,16 @@ class CustomAlbumTrackCreate(BaseModel):
 
 class CustomAlbumTrackOutput(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: str
     name: str
     track_number: int
     duration_ms: Optional[int] = None
+
+    @field_validator('id', mode='before')
+    @classmethod
+    def coerce_id(cls, v) -> str:
+        return str(v)
 
 class CustomAlbumCreate(BaseModel):
     name: str
@@ -64,3 +69,8 @@ class CustomAlbumOutput(BaseModel):
     created_at: datetime
     spotify_album_id: str
     tracks: List[CustomAlbumTrackOutput] = []
+
+    @field_validator('id', mode='before')
+    @classmethod
+    def coerce_id(cls, v) -> str:
+        return str(v)
