@@ -15,11 +15,19 @@ def paginated_response(pagination, message="Success"):
     """
     Transforma um objeto Pagination do SQLAlchemy em resposta JSON padrão.
     """
-    return jsonify({
-        "status": "success",
-        "message": message,
-        "data": pagination.items, 
-        "meta": {
+    if isinstance(pagination, dict):
+        items = pagination["items"]
+        meta = {
+            "page": pagination["page"],
+            "per_page": pagination["per_page"],
+            "total_items": pagination["total"],
+            "total_pages": pagination["pages"],
+            "has_next": pagination["has_next"],
+            "has_prev": pagination["has_prev"]
+        }
+    else:
+        items = pagination.items
+        meta = {
             "page": pagination.page,
             "per_page": pagination.per_page,
             "total_items": pagination.total,
@@ -27,6 +35,12 @@ def paginated_response(pagination, message="Success"):
             "has_next": pagination.has_next,
             "has_prev": pagination.has_prev
         }
+
+    return jsonify({
+        "status": "success",
+        "message": message,
+        "data": items,
+        "meta": meta
     }), 200
 
 def error_response(message, status_code=400, payload=None):
