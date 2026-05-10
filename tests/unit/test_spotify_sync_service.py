@@ -61,6 +61,7 @@ def test_sync_album_cria_com_tracks(app, test_db):
     with app.app_context():
         sp = MagicMock()
         sp.album.return_value = _fake_album_data()
+        sp.artist.return_value = _fake_artist_data()
 
         album = SpotifySyncService.sync_album('album_123', sp)
 
