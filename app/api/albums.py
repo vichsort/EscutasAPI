@@ -1,8 +1,8 @@
 from flask import Blueprint, request
 from app.utils import success_response, require_auth, ensure_spotify_token
-from app.services import AlbumService, CurationService
+from app.services import AlbumService, CurationService,CustomAlbumService
 from app.exceptions import BusinessRuleError, ResourceNotFoundError
-from app.schemas import CurationVoteInput
+from app.schemas import CurationVoteInput, CustomAlbumCreate
 
 albums_bp = Blueprint('albums', __name__, url_prefix='/api/albums')
 
@@ -62,4 +62,20 @@ def curate_album(current_user, spotify_id):
     return success_response(
         message="Voto de curadoria registrado. A comunidade agradece!",
         data={"is_canonical": payload.is_canonical}
+    )
+
+@albums_bp.route('/custom', methods=['POST'])
+@require_auth
+def create_custom_album(current_user):
+    """
+    Cria um álbum customizado com base nos dados fornecidos pelo usuário.
+    O payload deve conter nome, artista, cover_url e uma lista de faixas
+    """
+    payload = CustomAlbumCreate.model_validate(request.json)
+    album = CustomAlbumService.create_custom_album(current_user, payload)
+
+    return success_response(
+        data=album.model_dump(mode='json'),
+        message="Álbum customizado criado com sucesso!",
+        status_code=201
     )
