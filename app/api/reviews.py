@@ -4,7 +4,7 @@ from app.services import ReviewService
 from app.extensions import limiter
 from app.models import AlbumReview
 from app.schemas import ReviewFull, ReviewCreate, ReviewCreate, ReviewUpdate
-from app.exceptions import ResourceNotFoundError
+from app.exceptions import ResourceNotFoundError, AuthorizationError
 
 reviews_bp = Blueprint('reviews', __name__, url_prefix='/api/reviews')
 
@@ -39,8 +39,7 @@ def get_review_details(review_id):
     
     # Se for privada e quem tá pedindo não for o dono, bloqueia!
     if review.is_private and str(review.user_id) != str(current_user_id):
-        from app.exceptions import APIError
-        raise APIError("Esta review é privada.", 403)
+        raise AuthorizationError("Esta review é privada.", 403)
     
     return success_response(data=ReviewFull.model_validate(review).model_dump())
 

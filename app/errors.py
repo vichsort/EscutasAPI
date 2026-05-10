@@ -1,11 +1,9 @@
 from flask import jsonify
 from pydantic import ValidationError as PydanticValidationError
-from app.utils.response_util import APIError, handle_exception
+from app.utils.response_util import handle_exception
 from app.exceptions import EscutasError, DataValidationError 
 
 def register_error_handlers(app):
-    app.register_error_handler(APIError, handle_exception)
-
     @app.errorhandler(EscutasError)
     def handle_escutas_error(e):
         response = jsonify(e.to_dict())

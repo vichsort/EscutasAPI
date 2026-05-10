@@ -2,7 +2,7 @@ from app.extensions import db
 from functools import wraps
 from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
 from app.models import User
-from app.utils.response_util import APIError
+from app.exceptions import ResourceNotFoundError, AuthenticationError
 
 def require_auth(f):
     """
@@ -18,10 +18,10 @@ def require_auth(f):
             current_user = db.session.get(User, user_id)
             
             if not current_user:
-                raise APIError("Usuário não encontrado.", 401)
+                raise ResourceNotFoundError("Usuário não encontrado.", 401)
                 
         except Exception:
-            raise APIError("Token inválido ou expirado.", 401)
+            raise AuthenticationError("Token inválido ou expirado.", 401)
 
         return f(current_user, *args, **kwargs)
         
