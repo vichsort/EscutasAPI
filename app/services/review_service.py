@@ -19,14 +19,13 @@ class ReviewService:
         final_album_name = album_data.get('name')
         final_artist_name = album_data.get('artist')
         final_cover_url = album_data.get('cover')
-        
-        # Código duplicado resolvido com um ternário elegante
+
         final_album_id = spotify_id if spotify_id else f"custom:{uuid.uuid4()}"
 
         # Busca gêneros
         artist_id = album_data.get('artist_id') 
         final_genres = []
-        if artist_id and not spotify_id.startswith('custom:'):
+        if artist_id and not (spotify_id or '').startswith('custom:'):
             from app.models.artist import Artist
             from app.services.spotify_service import SpotifyService
             artist = Artist.query.filter_by(spotify_artist_id=artist_id).first()
@@ -180,9 +179,16 @@ class ReviewService:
         return calendar
 
     @staticmethod
-    @cache.memoize(timeout=120)
     def get_reviews(user_id, page=1, per_page=10, filters=None, request_user_id=None):
         """Retorna reviews paginadas para o histórico com filtros opcionais (Já formatadas)."""
+        filters_tuple = tuple(sorted(filters.items())) if filters else None
+        return ReviewService._get_reviews_cached(user_id, page, per_page, filters_tuple, request_user_id)
+
+    @staticmethod
+    @cache.memoize(timeout=120)
+    def _get_reviews_cached(user_id, page, per_page, filters_tuple, request_user_id):
+        filters = dict(filters_tuple) if filters_tuple else None
+        
         query = AlbumReview.query.filter_by(user_id=user_id)
 
         if str(request_user_id) != str(user_id):
