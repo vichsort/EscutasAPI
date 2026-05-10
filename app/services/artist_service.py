@@ -2,8 +2,7 @@ from app.extensions import cache, db
 from app.services.curation_service import CurationService
 from app.services.spotify_service import SpotifyService
 from app.services.spotify_sync_service import SpotifySyncService
-from app.models import AlbumReview, UserPlatinum
-from app.models.artist import Artist, Album
+from app.models import AlbumReview, UserPlatinum, Artist, Album
 from app.utils import clean_album_title
 from app.exceptions import SpotifyAPIError, ResourceNotFoundError
 from spotipy.exceptions import SpotifyException
