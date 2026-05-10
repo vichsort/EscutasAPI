@@ -56,13 +56,19 @@ class SpotifySyncService:
                 sp = SpotifyService.get_client()
 
             data = sp.album(spotify_album_id)
+            raw_name = data['name']
+            artist_spotify_id = data['artists'][0]['id'] if data['artists'] else None
+
+            # Artista precisa existir antes do Album por causa do FK
+            genres = []
+            if artist_spotify_id:
+                artist = SpotifySyncService.sync_artist(artist_spotify_id, sp)
+                if artist and artist.genres:
+                    genres = artist.genres
 
             if not album:
                 album = Album(spotify_album_id=spotify_album_id)
                 db.session.add(album)
-
-            raw_name = data['name']
-            artist_spotify_id = data['artists'][0]['id'] if data['artists'] else None
 
             album.name = raw_name
             album.clean_name = clean_album_title(raw_name)
@@ -72,19 +78,14 @@ class SpotifySyncService:
             album.release_date = data['release_date']
             album.total_tracks = data['total_tracks']
             album.is_canonical = is_canonical_album(raw_name)
+            album.genres = genres or None
             album.last_synced_at = datetime.now(timezone.utc)
 
-            # Herda gêneros do artista se existir no banco
-            if artist_spotify_id:
-                artist = Artist.query.filter_by(spotify_artist_id=artist_spotify_id).first()
-                if artist and artist.genres:
-                    album.genres = artist.genres
-
-            # Sincroniza tracks com paginação
             db.session.flush()
             SpotifySyncService._sync_tracks(album, data['tracks'], sp)
 
             return album
+
         except Exception as e:
             db.session.rollback()
             raise SpotifyAPIError(f"Erro ao sincronizar álbum {spotify_album_id}: {str(e)}")
