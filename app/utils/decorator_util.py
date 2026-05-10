@@ -15,16 +15,14 @@ def require_auth(f):
         try:
             verify_jwt_in_request()
             user_id = get_jwt_identity()
-            current_user = db.session.get(User, user_id)
-            
-            if not current_user:
-                raise ResourceNotFoundError("Usuário não encontrado.", 401)
-                
         except Exception:
-            raise AuthenticationError("Token inválido ou expirado.", 401)
+            raise AuthenticationError("Token inválido ou expirado.")
+
+        current_user = db.session.get(User, user_id)
+        if not current_user:
+            raise ResourceNotFoundError("Usuário")
 
         return f(current_user, *args, **kwargs)
-        
     return decorated
 
 def ensure_spotify_token(f):
