@@ -61,6 +61,10 @@ class AlbumService:
         """
         Busca detalhes de um album e sugere quais faixas devem ser ignoradas.
         """
+        if album_id.startswith('custom:'):
+            from app.services.custom_album_service import CustomAlbumService
+            return CustomAlbumService.get_custom_album(album_id)
+
         sp = SpotifyService.get_client(user)
         return AlbumService._get_album_details_cached(user.spotify_id, album_id, sp)
 
