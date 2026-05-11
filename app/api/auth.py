@@ -33,7 +33,7 @@ def callback():
     redirect_uri = request.args.get('redirect_uri', "http://127.0.0.1:5173/auth/callback")
 
     if not code:
-        raise AuthenticationError("Código de autorização não fornecido.", 400)
+        raise AuthenticationError("Código de autorização não fornecido.")
 
     try:
         user, api_token = AuthService.execute_login(code, redirect_uri)
@@ -48,7 +48,7 @@ def callback():
         )
 
     except ValueError as e:
-        raise AuthenticationError(str(e), 400)
+        raise AuthenticationError(str(e))
     except Exception as e:
         print(f"Erro Auth: {e}")
-        raise AuthenticationError("Falha interna na autenticação.", 500)
+        raise AuthenticationError("Falha interna na autenticação.")
