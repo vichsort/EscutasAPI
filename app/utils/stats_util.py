@@ -69,37 +69,6 @@ def get_top_artists(user_id: str, is_public_view: bool, db_session, limit: int =
                     
     return [{"name": artist, "count": count} for artist, count in results]
 
-# get_personalized_recommendations - - - - - - - - - - - - - - - - -
-def get_community_bubble(user_id: str, db_session, limit: int = 5):
-    """
-    Retorna os álbuns mais aclamados pela comunidade (Tier S) 
-    que o usuário ainda NÃO avaliou.
-    """
-    # Subquery: IDs dos álbuns que o utilizador JÁ avaliou
-    reviewed_ids = db_session.query(AlbumReview.spotify_album_id).filter(
-        AlbumReview.user_id == user_id
-    ).subquery()
-
-    # Busca álbuns Tier S na comunidade que não estão na subquery
-    bubble_query = db_session.query(
-        AlbumReview.spotify_album_id,
-        AlbumReview.album_name,
-        AlbumReview.artist_name,
-        AlbumReview.cover_url,
-        func.count(AlbumReview.id).label('total_votes')
-    ).filter(
-        AlbumReview.tier == 'S',
-        AlbumReview.is_private == False,
-        AlbumReview.spotify_album_id.not_in(reviewed_ids)
-    ).group_by(
-        AlbumReview.spotify_album_id, 
-        AlbumReview.album_name, 
-        AlbumReview.artist_name, 
-        AlbumReview.cover_url
-    ).order_by(desc('total_votes')).limit(limit).all()
-
-    return bubble_query
-
 # calculate_and_update_streak - - - - - - - - - - - - - - - -
 def get_user_review_dates(user_id: str, db_session) -> list:
     """
@@ -171,3 +140,34 @@ def get_monthly_summary(user_id, month: int, year: int, db_session) -> dict:
         "best_rating": best_review.average_score if best_review else None, # AQUI
         "top_album_ids": top_album_ids
     }
+
+# para o explore/bubble
+def get_community_bubble(user_id: str, db_session, limit: int = 5):
+    """
+    Retorna os álbuns mais aclamados pela comunidade (Tier S) 
+    que o usuário ainda NÃO avaliou.
+    """
+    # Subquery: IDs dos álbuns que o utilizador JÁ avaliou
+    reviewed_ids = db_session.query(AlbumReview.spotify_album_id).filter(
+        AlbumReview.user_id == user_id
+    ).subquery()
+
+    # Busca álbuns Tier S na comunidade que não estão na subquery
+    bubble_query = db_session.query(
+        AlbumReview.spotify_album_id,
+        AlbumReview.album_name,
+        AlbumReview.artist_name,
+        AlbumReview.cover_url,
+        func.count(AlbumReview.id).label('total_votes')
+    ).filter(
+        AlbumReview.tier == 'S',
+        AlbumReview.is_private == False,
+        AlbumReview.spotify_album_id.not_in(reviewed_ids)
+    ).group_by(
+        AlbumReview.spotify_album_id, 
+        AlbumReview.album_name, 
+        AlbumReview.artist_name, 
+        AlbumReview.cover_url
+    ).order_by(desc('total_votes')).limit(limit).all()
+
+    return bubble_query

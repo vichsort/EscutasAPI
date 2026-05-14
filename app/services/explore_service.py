@@ -4,6 +4,7 @@ from app.extensions import db, cache
 from app.models import AlbumReview, User
 from app.constants import HALL_OF_FAME_MIN_REVIEWS, TRENDING_DAYS_LIMIT
 from app.schemas import ReviewSummary
+from app.utils import get_community_bubble
 
 class ExploreService:
 
@@ -122,4 +123,22 @@ class ExploreService:
                 "avatar_url": row.avatar_url,
                 "review_count": row.review_count
             } for row in top_users_query
+        ]
+
+    @staticmethod
+    def get_community_bubble(user_id: str, limit: int = 5) -> list:
+        """
+        Álbuns aclamados pela comunidade (Tier S) que o usuário ainda não avaliou.
+        """
+        results = get_community_bubble(user_id, db.session, limit)
+
+        return [
+            {
+                "id": row.spotify_album_id,
+                "name": row.album_name,
+                "artist": row.artist_name,
+                "cover_url": row.cover_url,
+                "reason": f"Aclamado por {row.total_votes} pessoas na comunidade"
+            }
+            for row in results
         ]
