@@ -1,5 +1,5 @@
 from flask import Blueprint
-from app.utils import success_response
+from app.utils import success_response, require_auth
 from app.services.explore_service import ExploreService
 
 explore_bp = Blueprint('explore', __name__, url_prefix='/api/explore')
@@ -27,3 +27,10 @@ def get_top_reviewers():
     """Usuários mais ativos da semana."""
     data = ExploreService.get_top_reviewers()
     return success_response(data=data, message="Top avaliadores recuperados.")
+
+@explore_bp.route('/bubble', methods=['GET'])
+@require_auth
+def get_community_bubble(current_user):
+    """Álbuns aclamados pela comunidade que o usuário ainda não avaliou."""
+    data = ExploreService.get_community_bubble(current_user.id)
+    return success_response(data=data, message="A bolha recuperada.")
