@@ -1,6 +1,6 @@
 from flask import Blueprint, request
 from app.utils import success_response, require_auth, ensure_spotify_token
-from app.services import SpotifyService, MetaService
+from app.services import SpotifyService, MetaService, StatsService
 from app.exceptions import BusinessRuleError
 
 me_bp = Blueprint('me', __name__, url_prefix='/api/me')
@@ -50,6 +50,14 @@ def get_suggestions(current_user):
         data=data,
         message="Sugestões recuperadas."
     )
+
+@me_bp.route('/suggestions/platinums', methods=['GET'])
+@require_auth
+@ensure_spotify_token
+def get_platinum_suggestions(current_user):
+    """Sugere álbuns que faltam para platinar nos artistas favoritos."""
+    data = StatsService.get_platinum_focus(current_user)
+    return success_response(data=data, message="Sugestões de platina recuperadas.")
 
 @me_bp.route('/monthly-title', methods=['POST'])
 @require_auth
