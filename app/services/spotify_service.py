@@ -232,12 +232,56 @@ class SpotifyService:
     def maybe_refresh_token(user):
         expires_at = user.token_expires_at or 0
         now = int(time.time())
+
         if expires_at - now < 60:
+            # Loga o estado antes de tentar
+            current_app.logger.warning(
+                f"[spotify_refresh] token expirado/expirando para user={user.id} | "
+                f"expires_at={expires_at} now={now} diff={expires_at - now}s | "
+                f"refresh_token_presente={bool(user.refresh_token)}"
+            )
+
+            if not user.refresh_token:
+                # Não tenta o refresh, já sabe que vai falhar
+                current_app.logger.error(
+                    f"[spotify_refresh] refresh_token ausente para user={user.id}"
+                )
+                raise AuthenticationError(
+                    "Sessão do Spotify expirou. Faça login novamente."
+                )
+
             try:
                 sp_oauth = SpotifyService.get_oauth_object()
                 new_token_info = sp_oauth.refresh_access_token(user.refresh_token)
+
+                # Spotipy retorna None silenciosamente em falha — verifica explicitamente
+                if not new_token_info:
+                    current_app.logger.error(
+                        f"[spotify_refresh] refresh retornou None para user={user.id} | "
+                        f"refresh_token={user.refresh_token[:10]}..."
+                    )
+                    raise AuthenticationError(
+                        "Sessão do Spotify expirou e não pôde ser renovada."
+                    )
+
                 user.update_tokens(new_token_info)
                 db.session.commit()
                 SpotifyService._client_cache.pop(user.spotify_id, None)
-            except Exception:
-                raise AuthenticationError("Sessão do Spotify expirou e não pôde ser renovada.")
+
+                current_app.logger.info(
+                    f"[spotify_refresh] token renovado com sucesso para user={user.id} | "
+                    f"novo expires_at={new_token_info.get('expires_at')}"
+                )
+
+            except AuthenticationError:
+                # Re-lança sem envolver num segundo raise
+                raise
+
+            except Exception as e:
+                # Captura SpotifyOauthError, HTTPError, etc — loga o motivo real
+                current_app.logger.error(
+                    f"[spotify_refresh] exceção ao renovar token para user={user.id}: {repr(e)}"
+                )
+                raise AuthenticationError(
+                    "Sessão do Spotify expirou e não pôde ser renovada."
+                ) from e

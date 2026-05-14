@@ -34,7 +34,7 @@ def ensure_spotify_token(f):
     """
     @wraps(f)
     def decorated(*args, **kwargs):
-        current_user = kwargs.get('current_user')
+        current_user = args[0] if args else kwargs.get('current_user')
         if current_user:
             from app.services.spotify_service import SpotifyService
             SpotifyService.maybe_refresh_token(current_user)
