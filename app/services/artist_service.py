@@ -121,6 +121,7 @@ class ArtistService:
                     completed_count += 1
 
                 progress_list.append({
+                    "album_id": data["versions"][0],
                     "clean_name": clean_name,
                     "cover_url": data["cover_url"],
                     "release_date": data["release_date"][:4],
