@@ -22,6 +22,20 @@ def list_posts():
         message="Posts listados com sucesso."
     )
 
+@blog_bp.route('/my-posts', methods=['GET'])
+@require_auth
+def list_my_posts(current_user):
+    status = request.args.get('status', None)
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
+    paginated_data = BlogService.list_user_posts(current_user, page, per_page, status)
+    
+    return success_response(
+        data=paginated_data.model_dump(mode='json'),
+        message="Posts listados com sucesso."
+    )
+
 @blog_bp.route('/<slug>', methods=['GET'])
 def get_post(slug):
     """

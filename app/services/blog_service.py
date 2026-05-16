@@ -102,6 +102,23 @@ class BlogService:
         )
 
     @staticmethod
+    def list_user_posts(user, page=1, per_page=10, status=None) -> PaginatedBlogPostResponse:
+        """Lista posts do usuário logado, opcionalmente filtrado por status."""
+        query = BlogPost.query.filter_by(user_id=user.id).order_by(BlogPost.created_at.desc())
+        
+        if status:
+            query = query.filter_by(status=status)
+            
+        paginacao = query.paginate(page=page, per_page=per_page, error_out=False)
+
+        return PaginatedBlogPostResponse(
+            items=[BlogPostList.model_validate(p) for p in paginacao.items],
+            total=paginacao.total,
+            page=paginacao.page,
+            pages=paginacao.pages
+        )
+
+    @staticmethod
     def delete_post(post_id, user_id):
         """Deleta um post (CASCADE deleta as menções junto!)"""
         post = BlogService._get_post_and_verify_author(post_id, user_id)
