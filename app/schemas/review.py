@@ -66,6 +66,7 @@ class ReviewSummary(BaseModel):
     id: UUID4
     user_id: UUID4 
     spotify_album_id: str
+    spotify_artist_id: Optional[str] = None
     album_name: str
     artist_name: str
     cover_url: Optional[str] = None 
