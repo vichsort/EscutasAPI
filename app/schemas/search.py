@@ -18,6 +18,12 @@ class SearchResult(BaseModel):
     type: SearchType = Field(..., description="Tipo da entidade encontrada")
     image_url: Optional[str] = Field(None, description="URL da imagem para miniatura")
 
+    # IDs do spotify pra hyperlink para album/track
+    spotify_album_id: Optional[str] = None
+    spotify_artist_id: Optional[str] = None
+
     # (Opcional) Nome do artista para quando o tipo for ALBUM ou TRACK
     # Ajuda o usuário a distinguir entre "Greatest Hits" de bandas diferentes
     subtitle: Optional[str] = Field(None, description="Subtítulo informativo (ex: Nome do Artista)")
+
+    

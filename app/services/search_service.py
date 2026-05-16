@@ -43,6 +43,7 @@ class SearchService:
                     id=item['id'],
                     name=item['name'],
                     type='ALBUM',
+                    spotify_artist_id=item['artists'][0]['id'] if item['artists'] else None,
                     image_url=item['images'][0]['url'] if item['images'] else None,
                     subtitle=item['artists'][0]['name'] if item['artists'] else "Álbum"
                 ))
@@ -53,6 +54,8 @@ class SearchService:
                     id=item['id'],
                     name=item['name'],
                     type='TRACK',
+                    spotify_album_id=item['album']['id'],
+                    spotify_artist_id=item['artists'][0]['id'] if item['artists'] else None,
                     image_url=item['album']['images'][0]['url'] if item['album']['images'] else None,
                     subtitle=f"Música de {item['artists'][0]['name']}"
                 ))
