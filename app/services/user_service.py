@@ -1,8 +1,8 @@
 from typing import List, Optional
 from app.extensions import db
 from sqlalchemy import or_
-from app.models import User
-from app.schemas import UserPublic, UserProfile
+from app.models import User, Album, AlbumReview, UserPlatinum
+from app.schemas import UserPublic, UserProfile,PlatinumTrophyOutput
 
 class UserService:
     
@@ -47,3 +47,46 @@ class UserService:
             user_dto.joined_at = user.created_at.isoformat()
             
         return user_dto
+
+    @staticmethod
+    def get_user_platinums(user_id) -> list:
+        """
+        Busca dados de platina do usuário.
+        Retorna total para platina, quanto foi completo e a porcentagem expressa, 
+        """
+        trophies = UserPlatinum.query.filter_by(user_id=user_id).order_by(UserPlatinum.achieved_at.desc()).all()
+        artist_ids = [t.spotify_artist_id for t in trophies]
+
+        total_per_artist = dict(
+            db.session.query(Album.artist_spotify_id, db.func.count(Album.id))
+            .filter(Album.artist_spotify_id.in_(artist_ids), Album.is_canonical == True)
+            .group_by(Album.artist_spotify_id)
+            .all()
+        )
+
+        reviewed_per_artist = dict(
+            db.session.query(Album.artist_spotify_id, db.func.count(AlbumReview.id))
+            .join(AlbumReview, AlbumReview.spotify_album_id == Album.spotify_album_id)
+            .filter(
+                Album.artist_spotify_id.in_(artist_ids),
+                Album.is_canonical == True,
+                AlbumReview.user_id == user_id
+            )
+            .group_by(Album.artist_spotify_id)
+            .all()
+        )
+
+        data = []
+        
+        for t in trophies:
+            aid = t.spotify_artist_id
+            total = total_per_artist.get(aid, 0)
+            completed = reviewed_per_artist.get(aid, 0)
+            percentage = round((completed / total) * 100) if total > 0 else 100
+            entry = PlatinumTrophyOutput.model_validate(t).model_dump()
+            entry['total_required'] = total
+            entry['completed_count'] = completed
+            entry['percentage'] = percentage
+            data.append(entry)
+
+        return data

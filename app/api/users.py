@@ -86,12 +86,9 @@ def get_user_calendar(current_user, user_param):
 @users_bp.route('/<string:user_param>/platinums', methods=['GET'])
 @require_auth
 def get_user_platinums(current_user, user_param):
-    """Retorna as medalhas de platina do usuário."""
+    """Retorna dados de platina do usuário referenciado."""
     target_id, _ = resolve_target_user(user_param, current_user)
-
-    trophies = UserPlatinum.query.filter_by(user_id=target_id).order_by(UserPlatinum.achieved_at.desc()).all()
-    data = [PlatinumTrophyOutput.model_validate(t).model_dump() for t in trophies]
-    
+    data = UserService.get_user_platinums(target_id)
     return success_response(
         data=data,
         message=f"Foram encontradas {len(data)} platinas."

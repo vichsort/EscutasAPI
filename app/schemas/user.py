@@ -21,6 +21,7 @@ class UserProfile(UserPublic):
 class StatsOverview(BaseModel):
     total_reviews: int
     total_platinums: int
+    total_artists_reviewed: int
     average_score: float
     current_streak: int
     longest_streak: int

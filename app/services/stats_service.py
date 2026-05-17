@@ -1,4 +1,4 @@
-from app.models import User
+from app.models import User, AlbumReview
 from app.extensions import db
 from app.utils import count_user_reviews, count_user_platinums, calculate_average_score, get_tier_distribution, get_top_artists, get_user_review_dates
 from app.services.spotify_service import SpotifyService
@@ -21,12 +21,22 @@ class StatsService:
         tier_dict = get_tier_distribution(user_id, is_public_view, db.session)
         top_artists = get_top_artists(user_id, is_public_view, db.session)
 
+        total_artists = db.session.query(
+            db.func.count(db.func.distinct(AlbumReview.artist_name))
+        ).filter(AlbumReview.user_id == user_id)
+
+        if is_public_view:
+            total_artists = total_artists.filter(AlbumReview.is_private == False)
+
+        total_artists_reviewed = total_artists.scalar() or 0
+
         user = db.session.get(User, user_id)
 
         return {
             "overview": {
                 "total_reviews": total_reviews,
                 "total_platinums": total_plats,
+                "total_artists_reviewed": total_artists_reviewed,
                 "average_score": avg_score,
                 "current_streak": user.current_streak if user else 0,
                 "longest_streak": user.longest_streak if user else 0
