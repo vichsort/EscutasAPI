@@ -19,7 +19,8 @@ class User(db.Model):
     current_streak = db.Column(db.Integer, default=0)
     longest_streak = db.Column(db.Integer, default=0)
 
-    token_expires_at = db.Column(db.Integer, nullable=True)
+    # Timestamp unix; BigInteger porque Integer (32 bits) estoura em 2038
+    token_expires_at = db.Column(db.BigInteger, nullable=True)
 
     # Relacionamento: Um usuário tem muitas avaliações de álbuns
     reviews = db.relationship('AlbumReview', backref='user', lazy=True)

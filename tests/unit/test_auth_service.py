@@ -3,7 +3,7 @@ from app.services.auth_service import AuthService
 
 
 def _token_info():
-    return {'access_token': 'novo_token', 'refresh_token': 'novo_refresh', 'expires_at': 1900000000}
+    return {'access_token': 'novo_token', 'refresh_token': 'novo_refresh', 'expires_at': 9999999999}
 
 
 def test_login_preenche_account_id_de_usuario_antigo(test_db, user_mock):
