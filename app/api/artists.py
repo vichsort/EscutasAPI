@@ -24,7 +24,7 @@ def get_platinum_progress(current_user, artist_id):
 @artists_bp.route('/search', methods=['GET'])
 @require_auth
 @ensure_spotify_token
-def search_artists():
+def search_artists(current_user):
     """
     Busca de Artistas.
     O Frontend pode chamar esta rota em paralelo com a busca de álbuns 

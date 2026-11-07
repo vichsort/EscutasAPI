@@ -17,7 +17,8 @@ class ArtistService:
         """
         sp = SpotifyService.get_client(user)
         limit = max(1, min(limit, SPOTIFY_SEARCH_MAX_LIMIT))
-        return ArtistService._search_artists_cached(user.spotify_id, query, limit, sp)
+        spotify_id = user.spotify_id if user else None
+        return ArtistService._search_artists_cached(spotify_id, query, limit, sp)
 
     @staticmethod
     @cache.memoize(timeout=3600)
