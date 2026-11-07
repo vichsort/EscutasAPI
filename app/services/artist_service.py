@@ -5,6 +5,7 @@ from app.services.spotify_sync_service import SpotifySyncService
 from app.models import AlbumReview, UserPlatinum, Artist, Album
 from app.utils import clean_album_title
 from app.exceptions import SpotifyAPIError, ResourceNotFoundError
+from app.constants import SPOTIFY_SEARCH_MAX_LIMIT
 from spotipy.exceptions import SpotifyException
 
 class ArtistService:
@@ -15,6 +16,7 @@ class ArtistService:
         Busca artistas no Spotify.
         """
         sp = SpotifyService.get_client(user)
+        limit = max(1, min(limit, SPOTIFY_SEARCH_MAX_LIMIT))
         return ArtistService._search_artists_cached(user.spotify_id, query, limit, sp)
 
     @staticmethod

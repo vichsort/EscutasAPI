@@ -51,7 +51,7 @@ def test_gerar_wrapped_com_sucesso(auth_client, mock_spotify, test_db):
     }
     
     # Simulando a criação da Playlist
-    fake_sp.user_playlist_create.return_value = {
+    fake_sp.current_user_playlist_create.return_value = {
         'id': 'minha_playlist_de_abril'
     }
     

@@ -105,7 +105,7 @@ class SpotifySyncService:
                     name=track['name'],
                     track_number=track['track_number'],
                     duration_ms=track['duration_ms'],
-                    preview_url=track['preview_url'],
+                    preview_url=track.get('preview_url'),
                     suggested_ignore=False
                 ))
 

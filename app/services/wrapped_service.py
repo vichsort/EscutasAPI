@@ -43,10 +43,10 @@ class WrappedService:
         playlist_name = f"Meus Favoritos: {nome_mes} / {year} - Escutas"
         playlist_desc = f"A nata do que eu ouvi em {nome_mes} de {year}. Curadoria gerada automaticamente."
         
-        playlist_id = SpotifyService.create_user_playlist(user.spotify_id, playlist_name, playlist_desc)
-        
+        playlist_id = SpotifyService.create_user_playlist(user, playlist_name, playlist_desc)
+
         if playlist_id:
-            SpotifyService.add_tracks_to_playlist(playlist_id, track_uris)
+            SpotifyService.add_tracks_to_playlist(user, playlist_id, track_uris)
             playlist_url = f"https://open.spotify.com/playlist/{playlist_id}"
         else:
             # Fallback caso dê erro na criação

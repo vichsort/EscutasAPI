@@ -149,3 +149,7 @@ MESES = {
         5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
         9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
     }
+
+# Limite máximo do parâmetro 'limit' no GET /search do Spotify para apps em
+# Development Mode (era 50, caiu para 10 em fev/2026).
+SPOTIFY_SEARCH_MAX_LIMIT = 10

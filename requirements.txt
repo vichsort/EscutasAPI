@@ -37,7 +37,7 @@ pytest-mock==3.15.1
 python-dotenv==1.2.1
 redis==7.1.0
 requests==2.32.5
-spotipy==2.25.2
+spotipy==2.26.0
 SQLAlchemy==2.0.45
 typing-inspection==0.4.2
 typing_extensions==4.15.0

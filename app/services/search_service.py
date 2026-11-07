@@ -2,6 +2,7 @@ from app.extensions import cache, db
 from app.services.spotify_service import SpotifyService
 from app.schemas import SearchResult
 from app.models import AlbumReview
+from app.constants import SPOTIFY_SEARCH_MAX_LIMIT
 import sqlalchemy as sa
 
 class SearchService:
@@ -24,8 +25,9 @@ class SearchService:
 
         try:
             # Busca no Spotify (Artistas, Álbuns e Faixas de uma vez só)
-            # O limit é aplicado a CADA tipo.
-            search_data = sp.search(q=query, type='artist,album,track', limit=limit_per_type)
+            # O limit é aplicado a CADA tipo. Em Development Mode o máximo é 10 (fev/2026).
+            spotify_limit = max(1, min(limit_per_type, SPOTIFY_SEARCH_MAX_LIMIT))
+            search_data = sp.search(q=query, type='artist,album,track', limit=spotify_limit)
 
             # artistas
             for item in search_data.get('artists', {}).get('items', []):

@@ -13,8 +13,8 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
 
     # Requested data for Spotify
+    # 'user-read-email' saiu: o campo email não é mais retornado em Development Mode (fev/2026)
     SPOTIFY_SCOPE = (
-        'user-read-email '
         'user-library-read '
         'user-read-recently-played '
         'user-read-currently-playing '

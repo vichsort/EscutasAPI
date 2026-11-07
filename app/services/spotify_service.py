@@ -185,47 +185,43 @@ class SpotifyService:
             return []
 
     @staticmethod
-    def create_user_playlist(user_spotify_id: str, name: str, description: str, public: bool = True):
+    def create_user_playlist(user, name: str, description: str, public: bool = True):
         """
-        Cria uma nova playlist na conta do usuário do Spotify.
+        Cria uma nova playlist na conta do usuário logado (POST /me/playlists).
+        Precisa do token do usuário: o Client Credentials não tem acesso a contas.
         Retorna o ID da playlist criada.
         """
-        sp = SpotifyService.get_client()
-        if not sp:
-            return None
+        sp = SpotifyService.get_client(user)
 
         try:
-            playlist = sp.user_playlist_create(
-                user=user_spotify_id,
+            playlist = sp.current_user_playlist_create(
                 name=name,
                 public=public,
                 description=description
             )
             return playlist['id']
         except Exception as e:
-            print(f"Erro ao criar playlist no Spotify: {e}")
+            current_app.logger.error(f"[spotify_playlist] erro ao criar playlist para user={user.id}: {repr(e)}")
             return None
 
     @staticmethod
-    def add_tracks_to_playlist(playlist_id: str, track_uris: list):
+    def add_tracks_to_playlist(user, playlist_id: str, track_uris: list):
         """
-        Adiciona uma lista de músicas (URIs) a uma playlist específica.
+        Adiciona uma lista de músicas (URIs) a uma playlist do usuário (POST /playlists/{id}/items).
         track_uris deve ser uma lista no formato: ['spotify:track:ID1', 'spotify:track:ID2']
         """
-        sp = SpotifyService.get_client()
-        if not sp:
-            return False
-
         if not track_uris:
             return True
 
+        sp = SpotifyService.get_client(user)
+
         try:
-            # O Spotify aceita no máximo 100 músicas por vez
-            # Se a lista for maior, o Spotipy lida com isso ou podemos fatiar.
-            sp.playlist_add_items(playlist_id=playlist_id, items=track_uris)
+            # O Spotify aceita no máximo 100 itens por requisição
+            for i in range(0, len(track_uris), 100):
+                sp.playlist_add_items(playlist_id=playlist_id, items=track_uris[i:i + 100])
             return True
         except Exception as e:
-            print(f"Erro ao adicionar faixas à playlist: {e}")
+            current_app.logger.error(f"[spotify_playlist] erro ao adicionar faixas na playlist={playlist_id}: {repr(e)}")
             return False
 
     @staticmethod
