@@ -153,3 +153,7 @@ MESES = {
 # Limite máximo do parâmetro 'limit' no GET /search do Spotify para apps em
 # Development Mode (era 50, caiu para 10 em fev/2026).
 SPOTIFY_SEARCH_MAX_LIMIT = 10
+
+# Maior Retry-After (em segundos) que vale a pena esperar dentro da própria requisição
+# quando o Spotify responde 429. Acima disso (ou com cota estourada) falhamos na hora.
+SPOTIFY_MAX_RETRY_AFTER = 10

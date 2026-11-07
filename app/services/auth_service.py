@@ -1,8 +1,7 @@
 from app.extensions import db
 from app.models import User
-from app.services.spotify_service import SpotifyService
+from app.services.spotify_service import SpotifyService, EscutasSpotify
 from flask_jwt_extended import create_access_token
-import spotipy
 
 class AuthService:
     
@@ -24,7 +23,7 @@ class AuthService:
         if not token_info:
             raise ValueError("Falha ao obter token do Spotify")
 
-        sp = spotipy.Spotify(auth=token_info['access_token'])
+        sp = EscutasSpotify(auth=token_info['access_token'])
         spotify_user_data = sp.current_user()
         user = AuthService._upsert_user(spotify_user_data, token_info)
         api_access_token = create_access_token(identity=str(user.id))

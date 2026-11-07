@@ -3,7 +3,7 @@ from app.extensions import db
 from app.services.spotify_service import SpotifyService
 from app.models import Artist, Album, AlbumTrack
 from app.utils import is_canonical_album, clean_album_title
-from app.exceptions import SpotifyAPIError
+from app.exceptions import SpotifyAPIError, EscutasError
 
 class SpotifySyncService:
 
@@ -36,6 +36,10 @@ class SpotifySyncService:
 
             db.session.flush()
             return artist
+        except EscutasError:
+            # Erros do app (ex: SpotifyRateLimitError, ou o de um sync interno) sobem como estão
+            db.session.rollback()
+            raise
         except Exception as e:
             db.session.rollback()
             raise SpotifyAPIError(f"Erro ao sincronizar artista {spotify_artist_id}: {str(e)}")
@@ -86,6 +90,10 @@ class SpotifySyncService:
 
             return album
 
+        except EscutasError:
+            # Erros do app (ex: SpotifyRateLimitError, ou o de um sync interno) sobem como estão
+            db.session.rollback()
+            raise
         except Exception as e:
             db.session.rollback()
             raise SpotifyAPIError(f"Erro ao sincronizar álbum {spotify_album_id}: {str(e)}")
@@ -143,6 +151,10 @@ class SpotifySyncService:
 
             db.session.commit()
             return artist
+        except EscutasError:
+            # Erros do app (ex: SpotifyRateLimitError, ou o de um sync interno) sobem como estão
+            db.session.rollback()
+            raise
         except Exception as e:
             db.session.rollback()
             raise SpotifyAPIError(f"Erro ao sincronizar discografia {spotify_artist_id}: {str(e)}")

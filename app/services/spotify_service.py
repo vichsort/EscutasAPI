@@ -2,6 +2,10 @@ import time
 import os
 from typing import List, Optional
 from collections import Counter
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from urllib3.exceptions import MaxRetryError, ResponseError
 from flask import current_app
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth, SpotifyClientCredentials
@@ -9,7 +13,73 @@ from spotipy.cache_handler import MemoryCacheHandler
 from spotipy.exceptions import SpotifyException
 from app.extensions import db, cache
 from app.schemas import AlbumBase, CurrentPlaybackResponse, SuggestionResponse
-from app.exceptions import SpotifyAPIError, AuthenticationError 
+from app.exceptions import SpotifyAPIError, AuthenticationError, SpotifyRateLimitError
+from app.constants import SPOTIFY_MAX_RETRY_AFTER
+
+
+class _SpotifyRetry(Retry):
+    """
+    Retry do urllib3 que não fica dormindo em 429 longos.
+    O spotipy por padrão respeita qualquer Retry-After, então uma cota estourada
+    (QUOTA_EXCEEDED) pode prender o worker por muito tempo. Aqui só esperamos
+    Retry-After curtos (rate limit comum); senão desistimos na hora e, com
+    raise_on_status=False, a resposta volta para o spotipy ler o corpo e o 'reason'.
+    """
+    def increment(self, method=None, url=None, response=None, error=None, _pool=None, _stacktrace=None):
+        if response is not None and response.status == 429:
+            retry_after = self.get_retry_after(response)
+            if retry_after is None or retry_after > SPOTIFY_MAX_RETRY_AFTER:
+                raise MaxRetryError(_pool, url, ResponseError("429 sem Retry-After curto"))
+        return super().increment(method, url, response, error, _pool, _stacktrace)
+
+
+def _build_requests_session() -> requests.Session:
+    """Mesma configuração de retry do spotipy, trocando o Retry pelo _SpotifyRetry."""
+    retry = _SpotifyRetry(
+        total=Spotify.max_retries,
+        connect=None,
+        read=False,
+        allowed_methods=frozenset(['GET', 'POST', 'PUT', 'DELETE']),
+        status=Spotify.max_retries,
+        backoff_factor=0.3,
+        status_forcelist=Spotify.default_retry_codes,
+        raise_on_status=False,
+    )
+    session = requests.Session()
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    return session
+
+
+class EscutasSpotify(Spotify):
+    """
+    Cliente do Spotify do app: retry com teto no Retry-After e 429 convertido em
+    SpotifyRateLimitError (503 para o front, com retry_after no corpo).
+    """
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('requests_session', _build_requests_session())
+        super().__init__(*args, **kwargs)
+
+    def _internal_call(self, method, url, payload, params):
+        try:
+            return super()._internal_call(method, url, payload, params)
+        except SpotifyException as e:
+            if e.http_status != 429:
+                raise
+
+            quota_exceeded = e.reason == 'QUOTA_EXCEEDED'
+            try:
+                retry_after = int(e.headers.get('Retry-After'))
+            except (TypeError, ValueError):
+                retry_after = None
+
+            current_app.logger.warning(
+                f"[spotify_429] {method} {url} | quota_exceeded={quota_exceeded} "
+                f"retry_after={retry_after} reason={e.reason}"
+            )
+            raise SpotifyRateLimitError(quota_exceeded=quota_exceeded, retry_after=retry_after) from e
+
 
 class SpotifyService:
     _client_cache: dict = {}
@@ -47,7 +117,7 @@ class SpotifyService:
                 client_id=os.getenv("SPOTIFY_CLIENT_ID"),
                 client_secret=os.getenv("SPOTIFY_CLIENT_SECRET")
             )
-            return Spotify(client_credentials_manager=client_credentials_manager)
+            return EscutasSpotify(client_credentials_manager=client_credentials_manager)
 
         # Modo Usuário Logado
         if not user.access_token or not user.refresh_token:
@@ -57,7 +127,7 @@ class SpotifyService:
         now = int(time.time())
 
         if user.spotify_id not in SpotifyService._client_cache:
-            SpotifyService._client_cache[user.spotify_id] = Spotify(auth=user.access_token)
+            SpotifyService._client_cache[user.spotify_id] = EscutasSpotify(auth=user.access_token)
 
         return SpotifyService._client_cache[user.spotify_id]
     

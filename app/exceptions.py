@@ -40,6 +40,23 @@ class SpotifyAPIError(EscutasError):
     def __init__(self, message="Erro na comunicação com o Spotify.", status_code=502):
         super().__init__(message, status_code=status_code)
 
+class SpotifyRateLimitError(SpotifyAPIError):
+    """
+    O Spotify respondeu 429. 'quota_exceeded' indica cota da conta de desenvolvedor
+    estourada (reason QUOTA_EXCEEDED); caso contrário é o rate limit comum.
+    O retry_after vai no corpo JSON e não no header: o Flask-Limiter
+    (RATELIMIT_HEADERS_ENABLED) sobrescreve o Retry-After de toda resposta.
+    """
+    def __init__(self, quota_exceeded: bool = False, retry_after: int = None):
+        if quota_exceeded:
+            message = "O limite de uso da API do Spotify foi atingido. Tente novamente mais tarde."
+        else:
+            message = "O Spotify está recebendo requisições demais. Tente novamente em instantes."
+        super().__init__(message, status_code=503)
+        self.quota_exceeded = quota_exceeded
+        self.retry_after = retry_after
+        self.payload = {"retry_after": retry_after} if retry_after is not None else None
+
 
 # --- Exceções de Regra de Negócio (400) ---
 
