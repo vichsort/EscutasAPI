@@ -34,16 +34,30 @@ class AuthService:
     def _upsert_user(spotify_data, token_info):
         """Lida com a criação ou atualização do usuário após o login"""
         spotify_id = spotify_data['id']
-        
-        user = User.query.filter_by(spotify_id=spotify_id).first()
-        
+        account_id = spotify_data.get('account_id')
+
+        # O account_id é o vínculo estável; o spotify_id fica de fallback
+        # para usuários que ainda não logaram desde que o campo existe.
+        user = None
+        if account_id:
+            user = User.query.filter_by(spotify_account_id=account_id).first()
+        if not user:
+            user = User.query.filter_by(spotify_id=spotify_id).first()
+
         if not user:
             user = User(
                 spotify_id=spotify_id,
                 display_name=spotify_data.get('display_name')
             )
             db.session.add(user)
-        
+
+        if account_id:
+            user.spotify_account_id = account_id
+
+        if user.spotify_id != spotify_id:
+            SpotifyService._client_cache.pop(user.spotify_id, None)
+            user.spotify_id = spotify_id
+
         # Atualiza o nome (caso o usuário tenha mudado no Spotify)
         user.display_name = spotify_data.get('display_name')
         

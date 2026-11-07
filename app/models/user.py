@@ -8,6 +8,9 @@ class User(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     spotify_id = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    # 'account_id' do GET /me (mai/2026): identificador imutável da conta, recomendado
+    # pelo Spotify para vincular usuários. Nullable porque usuários antigos só ganham no próximo login.
+    spotify_account_id = db.Column(db.String(100), unique=True, nullable=True, index=True)
     display_name = db.Column(db.String(150))
     avatar_url = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
